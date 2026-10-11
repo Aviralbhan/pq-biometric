@@ -47,16 +47,18 @@ Server creates and stores in Redis (TTL 60 s, status unused):
 1. `sig = sign(device_key, SHA-384(manifest))`
 2. `(kem_ct, ss) = encapsulate(server_kem_pub)`
 3. `K = HKDF-SHA384(ikm=ss, salt=nonce, info="BEA-v1|" + mode + "|" + challenge_id)`
-4. `payload = AES-256-GCM(K, video || metadata || manifest || sig, AAD = mode + challenge_id)`
-5. Send `{challenge_id, mode, kem_ct, iv, payload}` to `POST /verify`.
+4. `payload = AES-256-GCM(K, video || metadata || manifest || sig, AAD = mode + "|" + challenge_id)` (each part length-prefixed)
+5. Send `{challenge_id, mode, kem_ct, iv, payload}` (length-prefixed, `SealedBundle.to_bytes()`) to `POST /verify`.
+
+The client pins the server KEM key at enrolment and refuses a challenge that names another key or a different `tx_hash` than the transaction it shows.
 
 ### Verification server (Layer C) — check order is fixed
-Stop at the first failure and return its reason code:
+Stop at the first failure and return its reason code. The lookup runs first because the mode to compare against is stored with the challenge; a downgraded request therefore still consumes it.
 
 | # | Check | Reason code |
 |---|---|---|
-| 1 | Mode matches stored challenge | MODE_MISMATCH |
-| 2 | Challenge exists, unexpired, unused → mark used atomically (Redis GETDEL) | EXPIRED / REPLAY |
+| 1 | Challenge exists, unexpired, unused → mark used atomically (Redis GETDEL) | EXPIRED / REPLAY |
+| 2 | Mode matches stored challenge | MODE_MISMATCH |
 | 3 | Decapsulate, derive K, decrypt (GCM tag valid) | TAMPER |
 | 4 | Nonce and tx_hash match issued values | TX_MISMATCH |
 | 5 | Recomputed sample hash matches manifest | HASH_MISMATCH |
@@ -67,7 +69,7 @@ Then run in parallel (asyncio + ONNX Runtime sessions loaded once at startup):
 | Module | Method | Reason code |
 |---|---|---|
 | Matcher | InsightFace buffalo_l ArcFace, cosine similarity vs template | NO_MATCH |
-| M1 PAD | MiniFASNetV1+V2 (Silent-Face-Anti-Spoofing), fine-tuned on CelebA-Spoof | PAD_FAIL |
+| M1 PAD | MiniFASNetV2 (scale 2.7) + MiniFASNetV1SE (scale 4.0), the two released Silent-Face-Anti-Spoofing models, fine-tuned on CelebA-Spoof | PAD_FAIL |
 | M2 Morph | ArcFace(enrolled ref) − ArcFace(live probe) → RBF SVM | MORPH_FLAG |
 | M3 Deepfake | GenD (CLIP ViT-L/14), frame scores averaged | DEEPFAKE_FAIL |
 | M4 Replay | Checks 1–6 + MediaPipe confirms the two actions appear in order | SCRIPT_FAIL |
@@ -75,7 +77,9 @@ Then run in parallel (asyncio + ONNX Runtime sessions loaded once at startup):
 
 **Decision:** any failed check or module score above its threshold → reject. Otherwise accept if matcher similarity ≥ threshold. Per-module thresholds set at BPCER 0.5% on validation data, stored in `config.yaml`.
 
-**Signed verdict:** server signs `{challenge_id, tx_hash, sample_hash, scores{match, m1..m5}, model_versions, thresholds_version, decision, reason_code, timestamp}` with its own key (ML-DSA-65 in PQ mode) and stores it in SQLite. Only hashes, never face images.
+**Signed verdict:** server signs `{challenge_id, tx_hash, sample_hash, scores{match, m1..m5}, model_versions, thresholds_version, decision, reason_code, timestamp}` with its own key (ML-DSA-65 in PQ mode) and stores it in SQLite: exactly one per consumed challenge, protocol rejections included. Only hashes, never face images.
+
+**Stubs:** a module whose weights are missing runs as a stub (fixed score, version `stub`) when `detectors.allow_stubs` is true. The version is in every verdict and in `/health`, so a stubbed result can never pass as a real one.
 
 **Client response:** only `accepted` / `rejected` + `challenge_id`. Reason codes go to the server log.
 
@@ -93,7 +97,7 @@ Hybrid crypto mode, device/hardware attestation, monotonic counters, TLS channel
 |---|---|---|
 | M1 (+ M4 screen replay) | CelebA-Spoof, faces ≥112 px, official split | github.com/Davidzhangyuanhan/CelebA-Spoof (Drive links in README) |
 | M2 + matcher | FRLL (1350×1350, CC BY 4.0) | figshare.com/articles/dataset/Face_Research_Lab_London_Set/5047666 |
-| M2 | FRLL-Morphs | zenodo.org/record/4415159 |
+| M2 | FRLL-Morphs (CC BY-SA 4.0) | zenodo.org/record/4415159 |
 | M3 | OpenForensics Val + Test-Dev (CC BY 4.0) | zenodo.org/records/5528418 |
 | M5 | Own recordings: real webcam vs OBS Virtual Camera vs v4l2loopback | team members only, written consent |
 
@@ -101,13 +105,15 @@ Rules: split by identity (no person in both train and test). Read CelebA-Spoof l
 
 ## 5. Repo layout
 ```
+settings.py    config loader (config.yaml, PQBIO_CONFIG, PQBIO_REDIS_URL)
 crypto/        suite.py, manifest.py
-server/        app.py, challenge.py, checks.py, decision.py, verdict.py
-client/        enroll.py, capture.py
-preprocessing/ faces.py   (one detection → 112x112, 224x224, 80x80 crops)
-detectors/     matcher/ m1_pad/ m2_morph/ m3_deepfake/ m4_replay/ m5_injection/
-eval/          metrics.py, perf.py, crypto_bench.py, attack_matrix.py, locustfile.py, plots.py, results/
-scripts/       download_*.py, filter_celeba_spoof.py, record_m5.py, replay_attacks.py, calibrate.py, verify_verdict.py
+server/        app.py, challenge.py, checks.py, decision.py, verdict.py, pipeline.py, store.py, timing.py, __main__.py
+client/        enroll.py, capture.py, protocol.py
+preprocessing/ faces.py   (one detection → 112x112, 224x224, 80x80 crops), video.py (JPEG-frame container)
+detectors/     base.py, matcher/ m1_pad/ m2_morph/ m3_deepfake/ m4_replay/ m5_injection/
+eval/          metrics.py, harness.py, perf.py, crypto_bench.py, attack_matrix.py, locustfile.py, plots.py, results/
+scripts/       fetch_models.py, download_*.py, filter_celeba_spoof.py, record_m5.py, replay_attacks.py, calibrate.py,
+               verify_verdict.py, eval_detectors.py, eval_matcher.py, train_m1.py, train_m2.py, train_m5.py, export_onnx.py
 tests/         pytest for every module
 data/          (gitignored)
 models/weights (gitignored)
@@ -126,7 +132,7 @@ config.yaml  requirements.txt  Dockerfile  docker-compose.yml  README.md
 ```
 pip install -r requirements.txt
 docker run -p 6379:6379 redis:7
-uvicorn server.app:app --port 8000
+uvicorn server.app:app --port 8000          # or: python -m server --fakeredis   (no Redis install)
 pytest -q
 docker compose up
 ```
@@ -137,12 +143,21 @@ docker compose up
 
 Mark each item `[x]` when its **Done when** check passes. Work on one step per session.
 
+**Rules:** tick `[x]` only when the full *Done when* check passed with real models and real data.
+Steps with code but no real-model run go in the progress log as "code done, not verified".
+No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.md`.
+
+**Progress log**
+- 2026-10-11 S0, S1, S2: done (their *Done when* checks need no models: pip/pytest; NIST vectors; fakeredis reason-code tests).
+- 2026-10-11 S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13: code done, not verified (stub runs only).
+- 2026-10-11 S9 replay suite was run with stub detectors and synthetic video; that CSV was removed (rule above). Rerun with real models.
+
 ### Week 1 (12–18 Oct) — milestone: one genuine PQ transaction end to end
-- [ ] **S0 Repo skeleton** (Abhijay) — layout, requirements.txt, config.yaml, .gitignore, README.
+- [x] **S0 Repo skeleton** (Abhijay) — layout, requirements.txt, config.yaml, .gitignore, README.
   Done when: `pip install -r requirements.txt` and `pytest -q` run.
 - [x] **S1 Crypto suite** (Aviral) — `CryptoSuite` with both modes: KEM keygen, encapsulate/decapsulate, sign/verify, HKDF, AES-GCM; canonical manifest + SHA-384.
   Done when: round-trip tests pass in both modes; flipped byte / wrong key / changed manifest fail; ML-KEM-768 ciphertext = 1,088 B, ML-DSA-65 signature = 3,309 B; NIST known-answer vectors (usnistgov/ACVP-Server) pass.
-- [ ] **S2 Server skeleton** (Abhijay) — `/enroll`, `/challenge`, `/verify`; Redis store; checks 1–6 in order; detector stubs return 0.0; stage timers.
+- [x] **S2 Server skeleton** (Abhijay) — `/enroll`, `/challenge`, `/verify`; Redis store; checks 1–6 in order; detector stubs return 0.0; stage timers.
   Done when: a pytest (with fakeredis) exists and passes for every reason code plus a valid request.
 - [ ] **S3 Matcher** (Abhijay) — `embed()`, `similarity()`; enrol FRLL neutral_front, probe smiling/3-4 views; wire into `/enroll` and `/verify`.
   Done when: `eval/results/matcher.csv` has FMR, FNMR and threshold at FMR 0.1%.
