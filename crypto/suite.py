@@ -86,6 +86,15 @@ class SealedBundle:
     def wire_size(self) -> int:
         return len(self.challenge_id.encode()) + len(self.mode.value) + len(self.kem_ct) + len(self.iv) + len(self.payload)
 
+    def to_bytes(self) -> bytes:
+        """HTTP body for POST /verify: length-prefixed challenge_id, mode, kem_ct, iv, payload."""
+        return _pack(self.challenge_id.encode(), self.mode.value.encode(), self.kem_ct, self.iv, self.payload)
+
+    @classmethod
+    def from_bytes(cls, data: bytes) -> SealedBundle:
+        challenge_id, mode, kem_ct, iv, payload = _unpack(data, 5)
+        return cls(challenge_id=challenge_id.decode("ascii"), mode=Mode(mode.decode("ascii")), kem_ct=kem_ct, iv=iv, payload=payload)
+
 
 def _pack(*parts: bytes) -> bytes:
     return b"".join(_LEN_PREFIX.pack(len(p)) + p for p in parts)
