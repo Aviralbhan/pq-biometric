@@ -149,7 +149,8 @@ No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.
 
 **Progress log**
 - 2026-10-11 S0, S1, S2: done (their *Done when* checks need no models: pip/pytest; NIST vectors; fakeredis reason-code tests).
-- 2026-10-11 S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13: code done, not verified (stub runs only).
+- 2026-10-11 S3: done. ArcFace buffalo_l (w600k_r50) + YuNet on FRLL: 102 subjects enrolled (neutral_front), 501/510 probes with a face (9 three-quarter views without a face >= 112 px, excluded). Threshold at FMR 0.1% on the val half = 0.2192; FNMR 0 on val and test (eval/results/matcher.csv). Server enrol/verify checked with the real matcher. config.yaml `thresholds.match` is still the uncalibrated 0.35 until S11 runs calibrate.py.
+- 2026-10-11 S4, S5, S6, S7, S8, S9, S10, S11, S12, S13: code done, not verified (stub runs only).
 - 2026-10-11 S9 replay suite was run with stub detectors and synthetic video; that CSV was removed (rule above). Rerun with real models.
 
 ### Week 1 (12–18 Oct) — milestone: one genuine PQ transaction end to end
@@ -159,7 +160,7 @@ No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.
   Done when: round-trip tests pass in both modes; flipped byte / wrong key / changed manifest fail; ML-KEM-768 ciphertext = 1,088 B, ML-DSA-65 signature = 3,309 B; NIST known-answer vectors (usnistgov/ACVP-Server) pass.
 - [x] **S2 Server skeleton** (Abhijay) — `/enroll`, `/challenge`, `/verify`; Redis store; checks 1–6 in order; detector stubs return 0.0; stage timers.
   Done when: a pytest (with fakeredis) exists and passes for every reason code plus a valid request.
-- [ ] **S3 Matcher** (Abhijay) — `embed()`, `similarity()`; enrol FRLL neutral_front, probe smiling/3-4 views; wire into `/enroll` and `/verify`.
+- [x] **S3 Matcher** (Abhijay) — `embed()`, `similarity()`; enrol FRLL neutral_front, probe smiling/3-4 views; wire into `/enroll` and `/verify`.
   Done when: `eval/results/matcher.csv` has FMR, FNMR and threshold at FMR 0.1%.
 - [ ] **S4 Datasets + preprocessing** (Krish) — download scripts; `faces.py` crops; CelebA-Spoof filter CSV.
   Done when: CSVs exist, a 20-crop sample grid looks correct, no identity overlap.
