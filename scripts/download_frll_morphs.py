@@ -49,7 +49,7 @@ def subject_images(folder: Path) -> dict[str, Path]:
 
 
 def find_morphs(root: Path) -> list[tuple[Path, str, str, str]]:
-    """(path, method, subject_a, subject_b). The method is the folder under the dataset root."""
+    """(path, method, subject_a, subject_b). The method is the image's folder name without "morph_"."""
     morphs = []
     for p in sorted(root.rglob("*")):
         if p.suffix.lower() not in IMAGE_EXT:
@@ -57,8 +57,8 @@ def find_morphs(root: Path) -> list[tuple[Path, str, str, str]]:
         m = PAIR_RE.search(p.stem)
         if not m or m.group(1) == m.group(2):
             continue
-        rel = p.relative_to(root).parts
-        method = next((part for part in rel[:-1] if part.lower() not in {"frll-morphs", "morphs", "morphed"}), rel[0])
+        # Layout: facelab_london/morph_<method>/<a>_<b>.jpg (methods: amsl, facemorpher, opencv, stylegan, webmorph)
+        method = p.parent.name.removeprefix("morph_")
         morphs.append((p, method, m.group(1), m.group(2)))
     return morphs
 
