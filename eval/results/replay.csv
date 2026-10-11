@@ -1,0 +1,13 @@
+mode,case,runs,expected_code,rejected,correct_code,rejection_rate,correct_code_rate,other_codes,video,protocol_false_rejections
+CLASSICAL,exact_resubmit,1000,REPLAY,1000,1000,1.0,1.0,,synthetic,
+CLASSICAL,expired,1000,EXPIRED,1000,1000,1.0,1.0,,synthetic,
+CLASSICAL,old_nonce,1000,TX_MISMATCH,1000,1000,1.0,1.0,,synthetic,
+CLASSICAL,swapped_tx,1000,TX_MISMATCH,1000,1000,1.0,1.0,,synthetic,
+CLASSICAL,flipped_byte,1000,TAMPER,1000,1000,1.0,1.0,,synthetic,
+CLASSICAL,genuine,1000,,0,1000,0.0,1.0,,synthetic,0
+PQ,exact_resubmit,1000,REPLAY,1000,1000,1.0,1.0,,synthetic,
+PQ,expired,1000,EXPIRED,1000,1000,1.0,1.0,,synthetic,
+PQ,old_nonce,1000,TX_MISMATCH,1000,1000,1.0,1.0,,synthetic,
+PQ,swapped_tx,1000,TX_MISMATCH,1000,1000,1.0,1.0,,synthetic,
+PQ,flipped_byte,1000,TAMPER,1000,1000,1.0,1.0,,synthetic,
+PQ,genuine,1000,,0,1000,0.0,1.0,,synthetic,0
