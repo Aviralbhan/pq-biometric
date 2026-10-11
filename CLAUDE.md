@@ -140,7 +140,7 @@ Mark each item `[x]` when its **Done when** check passes. Work on one step per s
 ### Week 1 (12–18 Oct) — milestone: one genuine PQ transaction end to end
 - [ ] **S0 Repo skeleton** (Abhijay) — layout, requirements.txt, config.yaml, .gitignore, README.
   Done when: `pip install -r requirements.txt` and `pytest -q` run.
-- [ ] **S1 Crypto suite** (Aviral) — `CryptoSuite` with both modes: KEM keygen, encapsulate/decapsulate, sign/verify, HKDF, AES-GCM; canonical manifest + SHA-384.
+- [x] **S1 Crypto suite** (Aviral) — `CryptoSuite` with both modes: KEM keygen, encapsulate/decapsulate, sign/verify, HKDF, AES-GCM; canonical manifest + SHA-384.
   Done when: round-trip tests pass in both modes; flipped byte / wrong key / changed manifest fail; ML-KEM-768 ciphertext = 1,088 B, ML-DSA-65 signature = 3,309 B; NIST known-answer vectors (usnistgov/ACVP-Server) pass.
 - [ ] **S2 Server skeleton** (Abhijay) — `/enroll`, `/challenge`, `/verify`; Redis store; checks 1–6 in order; detector stubs return 0.0; stage timers.
   Done when: a pytest (with fakeredis) exists and passes for every reason code plus a valid request.
