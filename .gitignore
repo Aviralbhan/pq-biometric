@@ -3,5 +3,8 @@ __pycache__/
 *.pyc
 .pytest_cache/
 data/
-models/weights/
+var/
+third_party/
+models/weights/*
+!models/weights/.gitkeep
 eval/results/*.tmp

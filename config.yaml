@@ -1,5 +1,94 @@
+# All runtime settings. Paths are relative to the repo root.
+# Override the file with PQBIO_CONFIG=/path/to/other.yaml.
+
 crypto:
-  mode: PQ          # PQ | CLASSICAL
+  mode: PQ                       # default mode for new challenges: PQ | CLASSICAL
+  allowed_modes: [PQ, CLASSICAL] # modes a client may request (evaluation runs both)
+
+server:
+  host: 127.0.0.1
+  port: 8000
+  keys_dir: var/server_keys      # server KEM, verdict-signing and storage keys (generated on first start)
+  db_path: var/server.sqlite     # enrolments, signed verdicts, per-request timings
+  log_path: var/server.log       # reason codes go here, never to the client
+  max_body_bytes: 20000000
+
+redis:
+  url: redis://localhost:6379/0  # "fakeredis://" runs an in-process store (tests, Windows dev)
+
 challenge:
   ttl_seconds: 60
   nonce_bytes: 32
+  actions: [blink_twice, turn_left, turn_right]
+  num_actions: 2
+  used_marker_ttl_seconds: 86400 # how long a consumed challenge is remembered (REPLAY vs EXPIRED)
+
+capture:
+  server_url: http://127.0.0.1:8000
+  device_dir: var/device         # device signing keys and pinned server keys
+  camera_index: 0
+  duration_seconds: 4
+  width: 640
+  height: 480
+  fps: 30
+  jpeg_quality: 90
+  resolution_probe: [320, 240]   # temporary resolution used to measure resolution-change latency
+
+preprocessing:
+  yunet_model: models/weights/face_detection_yunet_2023mar.onnx
+  score_threshold: 0.8
+  min_face_px: 112               # faces narrower than this are ignored
+  sample_frames: 8               # frames sampled per video for matcher / M1 / M3
+  gend_box_scale: 1.3            # square face box enlargement for the 224x224 GenD crop
+  pad_scales: [2.7, 4.0]         # MiniFASNet patch scales (one per pretrained model)
+
+detectors:
+  allow_stubs: true              # missing weights -> stub module with version "stub" (recorded in the verdict)
+  onnx_threads: 2
+  matcher:
+    model: models/weights/buffalo_l/w600k_r50.onnx
+    version: buffalo_l-w600k_r50
+  m1_pad:
+    models:                      # one ONNX per scale in preprocessing.pad_scales, same order
+      - models/weights/m1_pad/2.7_80x80_MiniFASNetV2.onnx
+      - models/weights/m1_pad/4_0_0_80x80_MiniFASNetV1SE.onnx
+    version: minifasnet-pretrained
+  m2_morph:
+    model: models/weights/m2_morph/dmad_svm.joblib
+  m3_deepfake:
+    model: models/weights/m3_deepfake/gend_clip_l14.onnx
+    version: gend-clip-l14
+    fake_index: 1                # softmax index of "fake"; confirmed by scripts/export_onnx.py
+  m4_replay:
+    landmarker: models/weights/face_landmarker.task
+    version: mediapipe-face-landmarker
+    blink_close: 0.5             # eyeBlink blendshape above this = eyes closed
+    blink_open: 0.3              # ...and back below this = eyes open again (hysteresis)
+    yaw_degrees: 15              # head yaw beyond this = turned
+    yaw_sign: 1                  # flip to -1 if left/right come out swapped on your camera
+    max_fps: 15                  # frames per second analysed (subsampled from the video)
+  m5_injection:
+    model: models/weights/m5_injection/hgb.joblib
+    version: m5                  # trained models carry their own version; without one: "m5-rules-only"
+    virtual_camera_names:        # case-insensitive substrings of known virtual cameras
+      - obs virtual
+      - obs-camera
+      - v4l2loopback
+      - dummy video device
+      - manycam
+      - snap camera
+      - xsplit
+      - virtual camera
+      - droidcam
+      - e2esoft
+      - splitcam
+
+# --- thresholds (written by scripts/calibrate.py; edit by hand only before calibration) ---
+thresholds:
+  version: uncalibrated
+  match: 0.35                    # accept if cosine similarity >= this
+  m1_pad: 0.5                    # reject if score > threshold (all modules below)
+  m2_morph: 0.5
+  m3_deepfake: 0.5
+  m4_replay: 0.5
+  m5_injection: 0.5

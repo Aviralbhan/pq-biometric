@@ -1,0 +1,6 @@
+# Only for scripts that export or fine-tune PyTorch models (S7, S10). Not needed to run the server.
+torch
+torchvision
+transformers
+onnx
+pillow

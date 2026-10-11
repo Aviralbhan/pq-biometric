@@ -1,0 +1,2 @@
+# One name per line: team members who gave written consent to M5 recordings.
+# Keep the signed consent forms outside the repository.
