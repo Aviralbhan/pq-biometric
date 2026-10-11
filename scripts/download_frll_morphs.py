@@ -4,12 +4,15 @@
     python scripts/download_frll_morphs.py
 
 Writes data/splits/m2_pairs.csv with columns
-    reference, probe, label (morph|bona_fide), morph_method, subject_a, subject_b, split
-Pairs:
-    morph:     reference = morph of A and B,         probe = smiling_front of A (and of B)
-    bona fide: reference = neutral_front of A,       probe = smiling_front of A
-Identities are split train/val/test (60/20/20) by subject id; a morph goes to a split
-only if both of its subjects are in that split, so no person crosses splits.
+    reference, probe, label (morph|bona_fide), morph_method, subject_a, subject_b, reference_view, probe_view
+Pairs (THREE_QUARTER = the four 3/4 views):
+    bona fide, both directions:
+        reference = neutral_front of A, probe = smiling_front or a 3/4 view of A
+        reference = smiling_front of A, probe = neutral_front or a 3/4 view of A
+    morph: reference = morph of A and B, probe = smiling_front or a 3/4 view of A, and of B
+           (not neutral_front: the morphs are made from the neutral front images)
+Morph probes use the same 3/4 views as bona fide probes, so head pose cannot separate the classes.
+No split column: scripts/train_m2.py assigns 5 identity-grouped folds (GroupKFold).
 """
 
 from __future__ import annotations
@@ -17,7 +20,6 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import random
 import re
 import sys
 import urllib.request
@@ -63,41 +65,42 @@ def find_morphs(root: Path) -> list[tuple[Path, str, str, str]]:
     return morphs
 
 
-def assign_splits(subjects: list[str], seed: int = 0) -> dict[str, str]:
-    s = sorted(subjects)
-    random.Random(seed).shuffle(s)
-    n = len(s)
-    return {sid: ("train" if i < 0.6 * n else "val" if i < 0.8 * n else "test") for i, sid in enumerate(s)}
+THREE_QUARTER = ("neutral_left_3quarter", "neutral_right_3quarter", "smiling_left_3quarter", "smiling_right_3quarter")
 
 
-def build_pairs(morph_root: Path, frll_root: Path, seed: int = 0) -> list[dict]:
-    neutral = subject_images(frll_root / "neutral_front")
-    smiling = subject_images(frll_root / "smiling_front")
-    if not neutral or not smiling:
+def build_pairs(morph_root: Path, frll_root: Path) -> list[dict]:
+    views = {v: subject_images(frll_root / v) for v in ("neutral_front", "smiling_front", *THREE_QUARTER)}
+    if not views["neutral_front"] or not views["smiling_front"]:
         raise SystemExit(f"FRLL neutral_front/smiling_front not found under {frll_root}; run download_frll.py")
-    split = assign_splits(sorted(set(neutral) & set(smiling)), seed)
-    rows = [
-        {"reference": str(neutral[s]), "probe": str(smiling[s]), "label": "bona_fide", "morph_method": "",
-         "subject_a": s, "subject_b": "", "split": split[s]}
-        for s in sorted(split)
-    ]
+    subjects = sorted(set(views["neutral_front"]) & set(views["smiling_front"]))
+    rows = []
+
+    def add(reference: Path, ref_view: str, subject: str, probe_views: tuple[str, ...], **extra) -> None:
+        for v in probe_views:
+            if subject in views[v]:
+                rows.append({"reference": str(reference), "probe": str(views[v][subject]), "reference_view": ref_view,
+                             "probe_view": v, **extra})
+
+    for s in subjects:
+        bona = {"label": "bona_fide", "morph_method": "", "subject_a": s, "subject_b": ""}
+        add(views["neutral_front"][s], "neutral_front", s, ("smiling_front", *THREE_QUARTER), **bona)
+        add(views["smiling_front"][s], "smiling_front", s, ("neutral_front", *THREE_QUARTER), **bona)
     morphs = find_morphs(morph_root)
     if not morphs:
         sample = [str(p.relative_to(morph_root)) for p in list(morph_root.rglob("*"))[:10]]
         raise SystemExit(f"no morph files with two subject ids found under {morph_root}; first entries: {sample}")
     for path, method, a, b in morphs:
-        if a not in split or b not in split or split[a] != split[b]:
-            continue  # cross-split morph: dropped so no identity appears in two splits
+        if a not in subjects or b not in subjects:
+            continue
         for probe_subject in (a, b):
-            rows.append({"reference": str(path), "probe": str(smiling[probe_subject]), "label": "morph", "morph_method": method,
-                         "subject_a": a, "subject_b": b, "split": split[a]})
+            add(path, "morph", probe_subject, ("smiling_front", *THREE_QUARTER),
+                label="morph", morph_method=method, subject_a=a, subject_b=b)
     return rows
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--skip-download", action="store_true")
-    ap.add_argument("--seed", type=int, default=0)
     args = ap.parse_args(argv)
     if not args.skip_download:
         with urllib.request.urlopen(RECORD, timeout=60) as resp:
@@ -109,7 +112,7 @@ def main(argv: list[str] | None = None) -> int:
                     md5 = line.split()[0]
         f = files["FRLL-Morphs.tar.gz"]
         extract(download(f["links"]["self"], DEST / "archives" / f["key"], expected_size=f["size"], md5=md5), DEST)
-    rows = build_pairs(DEST, FRLL, args.seed)
+    rows = build_pairs(DEST, FRLL)
     SPLITS.mkdir(parents=True, exist_ok=True)
     with open(SPLITS / "m2_pairs.csv", "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0]))
@@ -117,7 +120,7 @@ def main(argv: list[str] | None = None) -> int:
         w.writerows(rows)
     counts = defaultdict(int)
     for r in rows:
-        counts[(r["split"], r["label"], r["morph_method"])] += 1
+        counts[(r["label"], r["morph_method"])] += 1
     for k, v in sorted(counts.items()):
         print(f"  {k}: {v}")
     print(f"wrote {SPLITS / 'm2_pairs.csv'}")

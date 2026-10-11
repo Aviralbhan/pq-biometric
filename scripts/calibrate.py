@@ -2,8 +2,9 @@
 
     python scripts/calibrate.py [--target-bpcer 0.005] [--target-fmr 0.001]
 
-- M1, M2, M3, M5: threshold at BPCER 0.5% on the val bona fide scores in
+- M1, M3, M5: threshold at BPCER 0.5% on the val bona fide scores in
   eval/results/scores_<module>.csv (M5 uses its test folds: it has no separate val split).
+- M2: BPCER 1% on its pooled out-of-fold bona fide scores (5-fold GroupKFold; CLAUDE.md).
 - M4: pass/fail, fixed at 0.5.
 - Matcher: threshold at FMR 0.1% on val impostors in eval/results/matcher_scores.csv.
 A module without a scores file keeps its current threshold and is listed as such.
@@ -28,7 +29,8 @@ from eval.metrics import threshold_at_bpcer, threshold_at_fmr  # noqa: E402
 from settings import DEFAULT_CONFIG, load_config  # noqa: E402
 
 MARKER = "# --- thresholds"
-SCORED = {"m1_pad": "val", "m2_morph": "val", "m3_deepfake": "val", "m5_injection": "test"}
+SCORED = {"m1_pad": "val", "m2_morph": "oof", "m3_deepfake": "val", "m5_injection": "test"}
+TARGET_OVERRIDE = {"m2_morph": 0.01}  # M2: few bona fide pairs, see CLAUDE.md
 
 
 def read(name: str) -> list[dict] | None:
@@ -60,9 +62,10 @@ def main(argv: list[str] | None = None) -> int:
     for module, split in SCORED.items():
         rows = read(f"scores_{module}.csv")
         bona = [float(r["score"]) for r in rows or [] if r["split"] == split and r["label"] == "bona_fide"]
+        target = TARGET_OVERRIDE.get(module, args.target_bpcer)
         if bona:
-            new[module] = round(threshold_at_bpcer(bona, args.target_bpcer), 6)
-            report.append({"module": module, "threshold": new[module], "source": f"scores_{module}.csv[{split}]", "n": len(bona), "target": f"BPCER {args.target_bpcer}"})
+            new[module] = round(threshold_at_bpcer(bona, target), 6)
+            report.append({"module": module, "threshold": new[module], "source": f"scores_{module}.csv[{split}]", "n": len(bona), "target": f"BPCER {target}"})
         else:
             report.append({"module": module, "threshold": new[module], "source": "unchanged (no scores)", "n": 0, "target": ""})
     new["m4_replay"] = 0.5

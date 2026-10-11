@@ -14,6 +14,7 @@ from typing import Any
 import numpy as np
 
 from detectors.base import Detector, Sample, load_or_stub, onnx_session, softmax
+from preprocessing.video import sample_indices
 
 CLIP_MEAN = np.array([0.48145466, 0.4578275, 0.40821073], np.float32)
 CLIP_STD = np.array([0.26862954, 0.26130258, 0.27577711], np.float32)
@@ -27,9 +28,10 @@ def preprocess(crops_bgr: list[np.ndarray]) -> np.ndarray:
 class GenDDeepfake(Detector):
     name = "m3_deepfake"
 
-    def __init__(self, model_path: Path, version: str, fake_index: int = 1, threads: int = 2):
+    def __init__(self, model_path: Path, version: str, fake_index: int = 1, threads: int = 2, max_frames: int | None = None):
         self.version = version
         self.fake_index = fake_index
+        self.max_frames = max_frames  # CLIP ViT-L/14 costs ~0.2-0.6 s per frame on CPU
         self._sess = onnx_session(model_path, threads)
         self._input = self._sess.get_inputs()[0].name
 
@@ -40,7 +42,10 @@ class GenDDeepfake(Detector):
     def score(self, sample: Sample) -> float:
         if not sample.crops:
             return 0.0
-        return float(self.p_fake([c.gend224 for c in sample.crops]).mean())
+        crops = sample.crops
+        if self.max_frames:
+            crops = [crops[i] for i in sample_indices(len(crops), self.max_frames)]
+        return float(self.p_fake([c.gend224 for c in crops]).mean())
 
 
 def build(config: dict[str, Any]) -> Detector:
@@ -48,6 +53,6 @@ def build(config: dict[str, Any]) -> Detector:
     return load_or_stub(
         "m3_deepfake",
         [c["model"]],
-        lambda ps: GenDDeepfake(ps[0], c["version"], c.get("fake_index", 1), config["detectors"]["onnx_threads"]),
+        lambda ps: GenDDeepfake(ps[0], c["version"], c.get("fake_index", 1), c.get("threads", config["detectors"]["onnx_threads"]), c.get("max_frames")),
         config,
     )
