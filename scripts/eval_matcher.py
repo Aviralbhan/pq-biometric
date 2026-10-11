@@ -38,15 +38,18 @@ def main(argv: list[str] | None = None) -> int:
     embed = Embedder(config)
     root = Path(args.frll)
 
-    enrol = {s: embed(str(p)) for s, p in subject_images(root / "neutral_front").items()}
-    enrol = {s: e for s, e in enrol.items() if e is not None}
+    enrol_all = {s: embed(str(p)) for s, p in subject_images(root / "neutral_front").items()}
+    enrol = {s: e for s, e in enrol_all.items() if e is not None}
     probes: list[tuple[str, str, np.ndarray]] = []
+    no_face = {"neutral_front": len(enrol_all) - len(enrol)}
     for view in PROBES:
         if (root / view).exists():
-            for s, p in subject_images(root / view).items():
+            images = subject_images(root / view)
+            for s, p in images.items():
                 e = embed(str(p))
                 if e is not None:
                     probes.append((s, view, e))
+            no_face[view] = len(images) - sum(v == view for _, v, _ in probes)
     subjects = sorted(enrol)
     split = {s: ("val" if i % 2 == 0 else "test") for i, s in enumerate(subjects)}
 
@@ -68,8 +71,10 @@ def main(argv: list[str] | None = None) -> int:
             if g and i:
                 fmr, fnmr = fmr_fnmr(g, i, thr)
                 results.append({"split": part, "view": view, "threshold": thr, "fmr": fmr, "fnmr": fnmr,
-                                "n_genuine": len(g), "n_impostor": len(i), "model_version": embed.matcher.version})
+                                "n_genuine": len(g), "n_impostor": len(i), "model_version": embed.matcher.version,
+                                "images_without_face": sum(no_face.values()) if view == "all" else no_face.get(view, 0)})
     write_csv(RESULTS / "matcher.csv", results)
+    print(f"  images without a face >= {config['preprocessing']['min_face_px']} px: {no_face} (excluded; both halves)")
     for r in results:
         if r["view"] == "all":
             print(f"  {r['split']}: threshold {r['threshold']:.4f} (FMR {args.target_fmr:.1%} on val)  FMR {r['fmr']:.4f}  FNMR {r['fnmr']:.4f}")

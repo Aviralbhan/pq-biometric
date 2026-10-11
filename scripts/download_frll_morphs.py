@@ -43,7 +43,7 @@ def subject_images(folder: Path) -> dict[str, Path]:
     out = {}
     for p in sorted(folder.rglob("*")):
         m = SUBJECT_RE.match(p.name)
-        if p.suffix.lower() in IMAGE_EXT and m:
+        if p.suffix.lower() in IMAGE_EXT and m and "__MACOSX" not in p.parts:
             out.setdefault(m.group(1), p)
     return out
 
