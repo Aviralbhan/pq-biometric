@@ -29,9 +29,11 @@ sys.path.insert(0, str(ROOT))
 
 from detectors.base import onnx_session, softmax  # noqa: E402
 from detectors.m3_deepfake.gend import preprocess as gend_preprocess  # noqa: E402
-from eval.harness import RESULTS  # noqa: E402
+
 from preprocessing.faces import FacePreprocessor  # noqa: E402
 from settings import load_config, resolve  # noqa: E402
+
+RESULTS = ROOT / "eval" / "results"  # not from eval.harness: this script also runs in the slim GenD export venv
 
 SILENT_FACE = ROOT / "third_party" / "Silent-Face-Anti-Spoofing"
 GEND_REPO = ROOT / "third_party" / "GenD"
@@ -39,6 +41,17 @@ GEND_SAMPLES = {
     "fake": "https://github.com/yermandy/deepfake-detection/blob/main/datasets/FF/DF/000_003/000.png?raw=true",
     "real": "https://github.com/yermandy/deepfake-detection/blob/main/datasets/FF/real/000/000.png?raw=true",
 }
+
+
+def describe(images_csv: str | None, used: bool) -> str:
+    return f"face crops listed in {Path(images_csv).name}" if images_csv and used else "random tensors"
+
+
+def rel(path: Path) -> str:
+    try:
+        return Path(path).resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        return str(path)
 
 
 def cosine_rows(a: np.ndarray, b: np.ndarray) -> np.ndarray:
@@ -111,7 +124,8 @@ def export_m1(args, config) -> list[dict]:
         idx = targets.index(target)
         inputs = (patches[:, idx].transpose(0, 3, 1, 2).copy() if patches is not None
                   else np.random.default_rng(0).uniform(0, 255, (200, 3, h, w)).astype(np.float32))
-        rows.append({"module": "m1_pad", "model": target.name, "source": str(ckpt), **check(model, target, inputs)})
+        rows.append({"module": "m1_pad", "model": target.name, "source": rel(ckpt), "inputs": describe(args.images, patches is not None),
+                     **check(model, target, inputs)})
     return rows
 
 
@@ -140,9 +154,14 @@ def export_m3(args, config) -> list[dict]:
     if fake_index != configured:
         raise SystemExit(f"GenD fake class is {fake_index}; set detectors.m3_deepfake.fake_index to {fake_index} in config.yaml")
     inputs = image_inputs(args.images, config, "m3")
+    used_images = inputs is not None
     if inputs is None:
         inputs = np.random.default_rng(0).normal(0, 1, (200, 3, 224, 224)).astype(np.float32)
-    return [{"module": "m3_deepfake", "model": target.name, "source": args.hf_dir, "fake_index": fake_index, **check(model, target, inputs)}]
+    import transformers
+
+    return [{"module": "m3_deepfake", "model": target.name, "source": rel(Path(args.hf_dir)), "fake_index": fake_index,
+             "inputs": describe(args.images, used_images),
+             "transformers": transformers.__version__, **check(model, target, inputs)}]
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -159,7 +178,7 @@ def main(argv: list[str] | None = None) -> int:
     new = not out.exists()
     out.parent.mkdir(parents=True, exist_ok=True)
     with open(out, "a", newline="", encoding="utf-8") as fh:
-        fields = ["module", "model", "source", "fake_index", "n", "cosine_min", "cosine_mean", "max_abs_diff", "cpu_ms_median", "pass"]
+        fields = ["module", "model", "source", "inputs", "fake_index", "transformers", "n", "cosine_min", "cosine_mean", "max_abs_diff", "cpu_ms_median", "pass"]
         w = csv.DictWriter(fh, fieldnames=fields, extrasaction="ignore")
         if new:
             w.writeheader()

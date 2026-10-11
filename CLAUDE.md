@@ -160,7 +160,17 @@ No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.
 **Progress log**
 - 2026-10-11 S0, S1, S2: done (their *Done when* checks need no models: pip/pytest; NIST vectors; fakeredis reason-code tests).
 - 2026-10-11 S3: done. ArcFace buffalo_l (w600k_r50) + YuNet on FRLL: 102 subjects enrolled (neutral_front), 501/510 probes with a face (9 three-quarter views without a face >= 112 px, excluded). Threshold at FMR 0.1% on the val half = 0.2192; FNMR 0 on val and test (eval/results/matcher.csv). Server enrol/verify checked with the real matcher. config.yaml `thresholds.match` is still the uncalibrated 0.35 until S11 runs calibrate.py.
-- 2026-10-11 S4, S5, S6, S7, S8, S9, S10, S11, S12, S13: code done, not verified (stub runs only).
+- 2026-10-11 S10: done for the pretrained models. MiniFASNetV2 / V1SE (Silent-Face @ b6d5f04) and GenD CLIP-L/14 exported
+  (opset 17); PyTorch vs ONNX cosine min 1.000000 on 200 real face crops each (FRLL patches for M1, OpenForensics Val
+  for M3); CPU 3.8 / 3.9 / 616 ms per input (eval/results/onnx_export.csv). Fine-tuned M1 must be re-exported after S7.
+- 2026-10-11 GenD: its own loader fails under transformers 5.19 (from_pretrained inside a meta-device init), so it is
+  exported from a separate venv with transformers 4.56.2 (`.venv-gend456`, export only). The server runs the ONNX file.
+  ONNX + server preprocessing vs GenD's own pipeline (CPU): max |dP| 5.2e-6 on 50 faces; GenD on GPU differs from CPU
+  by up to 4.4e-3 (TF32) with the same class (eval/results/m3_gend_equivalence.csv).
+- 2026-10-11 Server: matcher, M1 (pretrained), M3, M4 real; M2 stub until S7 saves its model; M5 rules only.
+  GenD scores 3 of the sampled frames per request (`detectors.m3_deepfake.max_frames`, CPU cost). `/health` lists stubs.
+- 2026-10-11 Webcam works again (status OK, 640x480 @ 30 fps). S6 live check needs a team member at the camera.
+- 2026-10-11 S4, S5, S6, S7, S8, S9, S11, S12, S13: code done, not verified (stub runs only).
 - 2026-10-11 S9 replay suite was run with stub detectors and synthetic video; that CSV was removed (rule above). Rerun with real models.
 
 ### Week 1 (12–18 Oct) — milestone: one genuine PQ transaction end to end
@@ -180,7 +190,7 @@ No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.
 ### Week 2 (19–25 Oct) — milestone: each piece works on its own
 - [ ] **S6 Capture client** (Aviral) — `enroll.py`, `capture.py`: challenge → actions → 4 s video → metadata → manifest → sign → encrypt → verify.
   Done when: a team member enrols and is accepted in both modes.
-- [ ] **S7 M1/M2/M3** (Krish) — fine-tune MiniFASNet; build D-MAD SVM on FRLL-Morphs (morph-ref vs genuine-ref pairs, identity split); evaluate GenD (optional LayerNorm-only tuning).
+- [ ] **S7 M1/M2/M3** (Krish) — fine-tune MiniFASNet; build D-MAD SVM on FRLL-Morphs (morph-ref vs genuine-ref pairs, identity split); evaluate GenD zero-shot (the optional LayerNorm-only tuning is dropped, decision 2026-10-11).
   Done when: per-attack-type results CSV per module, including APCER on screen-replay types (PC/Pad/Phone) and per morph method.
 - [ ] **S8 M5 data + features** (Abhijay) — `record_m5.py` (bona_fide / obs / v4l2loopback, ~40–60 sessions each); `features.py`.
   Done when: feature CSV covers all three classes.
@@ -188,7 +198,7 @@ No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.
 ### Week 3 (26 Oct – 1 Nov) — milestone: full pipeline in both modes, demo-ready
 - [ ] **S9 M4 + replay suite** (Aviral) — MediaPipe blink/yaw action check; `replay_attacks.py`: exact re-submit, expired challenge, old nonce, swapped tx_context, flipped byte (1,000 each) + 1,000 fresh genuine runs.
   Done when: 100% of attacks rejected with correct code; 0% false rejection from protocol checks.
-- [ ] **S10 ONNX export** (Krish) — MiniFASNet and GenD to ONNX (opset 17).
+- [x] **S10 ONNX export** (Krish) — MiniFASNet and GenD to ONNX (opset 17).
   Done when: PyTorch vs ONNX cosine > 0.999 on 200 images; CPU latency recorded.
 - [ ] **S11 Integration** (Abhijay) — real modules in parallel; M5 classifier (leave-one-tool-out); `calibrate.py` thresholds; decision rule; signed verdict + `verify_verdict.py`; Dockerfile + docker-compose.
   Done when: `docker compose up` works; genuine accepted; print, screen replay, OBS and morphed enrolment each rejected with the right code; editing a stored score makes `verify_verdict.py` fail.

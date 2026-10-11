@@ -1,0 +1,4 @@
+module,model,source,inputs,fake_index,transformers,n,cosine_min,cosine_mean,max_abs_diff,cpu_ms_median,pass
+m3_deepfake,gend_clip_l14.onnx,models/weights/m3_deepfake/GenD_CLIP_L_14,face crops listed in m3_val.csv,1,4.56.2,200,0.9999997615814209,1.0,4.6253204345703125e-05,615.75735,True
+m1_pad,2.7_80x80_MiniFASNetV2.onnx,third_party/Silent-Face-Anti-Spoofing/resources/anti_spoof_models/2.7_80x80_MiniFASNetV2.pth,face crops listed in m1_parity_frll.csv (FRLL),,,200,0.9999998211860657,1.0,1.7523765563964844e-05,3.75885,True
+m1_pad,4_0_0_80x80_MiniFASNetV1SE.onnx,third_party/Silent-Face-Anti-Spoofing/resources/anti_spoof_models/4_0_0_80x80_MiniFASNetV1SE.pth,face crops listed in m1_parity_frll.csv (FRLL),,,200,0.9999998211860657,1.0,1.6450881958007812e-05,3.92115,True

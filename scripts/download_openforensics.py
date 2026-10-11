@@ -24,7 +24,7 @@ import cv2
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from preprocessing.faces import crop_square  # noqa: E402
-from scripts._download import download, extract, remove  # noqa: E402
+from scripts._download import download, download_parallel, extract, remove  # noqa: E402
 from settings import ROOT  # noqa: E402
 
 RECORD = "https://zenodo.org/api/records/5528418"
@@ -62,21 +62,29 @@ def crop_split(split: str, images_root: Path, annotations: Path, out_root: Path,
     return rows
 
 
+def md5_of(entry: dict) -> str | None:
+    checksum = entry.get("checksum", "")
+    return checksum.removeprefix("md5:") if checksum.startswith("md5:") else None
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--splits", nargs="+", default=["Val"], choices=["Val", "Test-Dev"])
     ap.add_argument("--min-face", type=int, default=112)
     ap.add_argument("--limit", type=int, help="max annotations per split (quick runs)")
     ap.add_argument("--keep-archives", action="store_true")
+    ap.add_argument("--connections", type=int, default=4, help="parallel HTTP Range connections per archive")
     args = ap.parse_args(argv)
     with urllib.request.urlopen(RECORD, timeout=60) as resp:
         files = {f["key"]: f for f in json.load(resp)["files"]}
     SPLITS.mkdir(parents=True, exist_ok=True)
     for split in args.splits:
         parts = sorted(k for k in files if k.startswith(f"{split}.zip") or k.startswith(f"{split}_part_"))
-        ann = download(files[f"{split}_poly.json"]["links"]["self"], DEST / f"{split}_poly.json", files[f"{split}_poly.json"]["size"])
+        jf = files[f"{split}_poly.json"]
+        ann = download(jf["links"]["self"], DEST / f"{split}_poly.json", jf["size"], md5=md5_of(jf))
         for key in parts:
-            archive = download(files[key]["links"]["self"], DEST / "archives" / key, files[key]["size"])
+            f = files[key]
+            archive = download_parallel(f["links"]["self"], DEST / "archives" / key, f["size"], md5=md5_of(f), connections=args.connections)
             extract(archive, DEST / "images" / split)
             if not args.keep_archives:
                 remove(archive)

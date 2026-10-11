@@ -1,0 +1,4 @@
+comparison,n,max_abs_dp,mean_abs_dp,same_class,result
+"GenD own pipeline, transformers 4.56.2 (cuda) vs GenD own pipeline, transformers 5.19.0 (cuda)",0,,,,could not run: RuntimeError: You are using `from_pretrained` with a meta device context manager or `torch.set_default_device('meta')`.
+"GenD own pipeline, transformers 4.56.2 (cpu) vs GenD own pipeline, transformers 4.56.2 (cuda)",50,0.00436,0.000642,50/50,differs (tolerance 0.0001)
+"GenD own pipeline, transformers 4.56.2 (cpu) vs onnxruntime 1.31.0 + server preprocessing (cpu)",50,5.19e-06,8.54e-07,50/50,match (tolerance 0.0001)

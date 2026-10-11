@@ -211,6 +211,7 @@ def create_app(config: dict[str, Any] | None = None) -> FastAPI:
             "default_mode": server.default_mode.value,
             "allowed_modes": sorted(m.value for m in server.allowed_modes),
             "model_versions": server.pipeline.versions(),
+            "stubs": sorted(k for k, v in server.pipeline.versions().items() if v == "stub"),
             "thresholds_version": server.thresholds.get("version"),
         }
 

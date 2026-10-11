@@ -59,6 +59,8 @@ detectors:
     model: models/weights/m3_deepfake/gend_clip_l14.onnx
     version: gend-clip-l14
     fake_index: 1                # softmax index of "fake"; confirmed by scripts/export_onnx.py
+    max_frames: 3                # GenD runs on this many of the sampled frames (CPU cost ~0.2-0.6 s each)
+    threads: 8                   # ONNX Runtime threads for GenD (the other modules use onnx_threads)
   m4_replay:
     landmarker: models/weights/face_landmarker.task
     version: mediapipe-face-landmarker
