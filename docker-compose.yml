@@ -1,0 +1,19 @@
+# docker compose up  ->  Redis + verification server on http://127.0.0.1:8000
+# Put model weights in ./models/weights first (scripts/fetch_models.py, scripts/export_onnx.py);
+# without them the server starts with stub detectors and says so in /health.
+services:
+  redis:
+    image: redis:7
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+
+  server:
+    build: .
+    depends_on: [redis]
+    ports: ["8000:8000"]
+    volumes:
+      - ./models/weights:/app/models/weights:ro
+      - ./var:/app/var
+      - ./config.yaml:/app/config.yaml:ro
+    environment:
+      PQBIO_CONFIG: /app/config.yaml
+      PQBIO_REDIS_URL: redis://redis:6379/0
