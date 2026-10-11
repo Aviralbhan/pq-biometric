@@ -1,0 +1,5 @@
+crypto:
+  mode: PQ          # PQ | CLASSICAL
+challenge:
+  ttl_seconds: 60
+  nonce_bytes: 32
