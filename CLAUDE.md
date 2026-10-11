@@ -170,7 +170,16 @@ No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.
 - 2026-10-11 Server: matcher, M1 (pretrained), M3, M4 real; M2 stub until S7 saves its model; M5 rules only.
   GenD scores 3 of the sampled frames per request (`detectors.m3_deepfake.max_frames`, CPU cost). `/health` lists stubs.
 - 2026-10-11 Webcam works again (status OK, 640x480 @ 30 fps). S6 live check needs a team member at the camera.
-- 2026-10-11 S4, S5, S6, S7, S8, S9, S11, S12, S13: code done, not verified (stub runs only).
+- 2026-10-11 S5 (M3 part): zero-shot GenD ONNX on OpenForensics Val, 3,951 real / 9,861 fake faces >= 112 px: AUC 0.930,
+  EER 0.141; threshold at BPCER 0.5% set on these same Val real faces = 0.9754 -> APCER 0.700 (eval/results/m3_deepfake_zero_shot.csv).
+  Test-Dev (independent) to be added. M1 zero-shot waits for CelebA-Spoof.
+- 2026-10-11 S7 (M2 part): D-MAD SVM, 5-fold GroupKFold, pooled out-of-fold: 1,002 bona fide pairs, threshold 0.4908 at
+  BPCER 1%; EER 0.0039, AUC 0.9999; APCER amsl 0.0038 (3,984 pairs), facemorpher 0.0022 (2,265), opencv 0.0022 (2,265),
+  stylegan 0.0000 (775), webmorph 0.0026 (2,265) (eval/results/m2_morph.csv). Caveat: YuNet (score 0.8) finds no face in
+  most StyleGAN morphs (226/300 sampled; all found at 0.5), so StyleGAN results cover only the confidently detected ~30%;
+  852 of 7,663 images had no face (9 FRLL 3/4 views, the rest morphs). Threshold is from the pooled out-of-fold scores
+  it is reported on (no separate validation set). config.yaml thresholds stay uncalibrated until S11.
+- 2026-10-11 S4, S5 (M1), S6, S7 (M1), S8, S9, S11, S12, S13: code done, not verified.
 - 2026-10-11 S9 replay suite was run with stub detectors and synthetic video; that CSV was removed (rule above). Rerun with real models.
 
 ### Week 1 (12–18 Oct) — milestone: one genuine PQ transaction end to end

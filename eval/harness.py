@@ -102,6 +102,14 @@ def session_or_synthetic(session_dir: str | None, reference: str | None = None) 
     return video, meta, (Path(reference).read_bytes() if reference else ref), "synthetic"
 
 
+def rel_path(path: str | Path) -> str:
+    """Repo-relative POSIX path for result files (no local user directories in committed CSVs)."""
+    try:
+        return Path(path).resolve().relative_to(ROOT).as_posix()
+    except ValueError:
+        return str(path)
+
+
 def write_csv(path: str | Path, rows: Sequence[dict[str, Any]]) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)

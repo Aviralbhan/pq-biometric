@@ -18,7 +18,8 @@ Protocol (CLAUDE.md, M2):
   validation set); the report says so.
 - The deployed model is retrained on all subjects.
 
-Writes eval/results/scores_m2_morph.csv (every out-of-fold pair), eval/results/m2_morph.csv
+Writes eval/results/scores_m2_morph.csv (every out-of-fold pair), eval/results/m2_images_without_face.csv,
+eval/results/m2_morph.csv
 (pooled and per-fold rows, each with its exact bona fide and attack counts) and the
 model to models/weights/m2_morph/dmad_svm.joblib.
 """
@@ -40,7 +41,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from detectors.m2_morph.dmad import dmad_feature, save, svm_score, train_svm  # noqa: E402
 from detectors.matcher.arcface import ArcFaceMatcher  # noqa: E402
-from eval.harness import RESULTS, write_csv  # noqa: E402
+from eval.harness import RESULTS, rel_path, write_csv  # noqa: E402
 from eval.metrics import detection_summary, threshold_at_bpcer  # noqa: E402
 from preprocessing.faces import FacePreprocessor, YuNetDetector  # noqa: E402
 from settings import ROOT, load_config, resolve  # noqa: E402
@@ -113,6 +114,13 @@ def main(argv: list[str] | None = None) -> int:
             feats.append(dmad_feature(ref, probe))
             kept.append(r)
     no_face = sorted(p for p, e in embed.cache.items() if e is None)
+    by_folder: dict[str, list[int]] = {}
+    for path, e in embed.cache.items():
+        counts = by_folder.setdefault(Path(path).parent.name, [0, 0])
+        counts[0] += 1
+        counts[1] += e is None
+    write_csv(RESULTS / "m2_images_without_face.csv",
+              [{"folder": k, "images": v[0], "without_face": v[1]} for k, v in sorted(by_folder.items())])
     print(f"embedded {len(embed.cache)} images in {time.perf_counter() - t0:.0f} s; {len(no_face)} without a face; "
           f"{len(kept)}/{len(pairs)} pairs kept")
     x = np.stack(feats)
@@ -148,7 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     write_csv(RESULTS / "scores_m2_morph.csv", [
         {"split": "oof", "fold": int(test_fold[i]), "label": "attack" if y[i] else "bona_fide", "attack_type": methods[i],
          "reference_view": kept[i]["reference_view"], "probe_view": kept[i]["probe_view"],
-         "reference": kept[i]["reference"], "probe": kept[i]["probe"], "score": float(oof[i])}
+         "reference": rel_path(kept[i]["reference"]), "probe": rel_path(kept[i]["probe"]), "score": float(oof[i])}
         for i in np.where(tested)[0]
     ])
 

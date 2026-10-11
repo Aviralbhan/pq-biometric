@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from detectors.base import Sample, Stub  # noqa: E402
 from detectors.m1_pad import minifasnet  # noqa: E402
 from detectors.m3_deepfake import gend  # noqa: E402
-from eval.harness import RESULTS, write_csv  # noqa: E402
+from eval.harness import RESULTS, rel_path, write_csv  # noqa: E402
 from eval.metrics import detection_summary, threshold_at_bpcer  # noqa: E402
 from preprocessing.faces import CenterFaceStub, FaceCrops, FacePreprocessor  # noqa: E402
 from settings import load_config  # noqa: E402
@@ -68,7 +68,7 @@ def main(argv: list[str] | None = None) -> int:
         with open(scores_path, encoding="utf-8") as fh:
             rows = [{**r, "score": float(r["score"])} for r in csv.DictReader(fh) if r.get("model_version") == detector.version]
         print(f"resuming: {len(rows)} scores already present for {detector.version}")
-    done = {r["path"] for r in rows}
+    done = {r["path"] for r in rows}  # repo-relative
     timings, no_face, n_new = [], 0, 0
     pending: list[tuple[dict, np.ndarray]] = []
 
@@ -88,12 +88,12 @@ def main(argv: list[str] | None = None) -> int:
 
     def row(it: dict, score: float) -> dict:
         return {"split": it.get("split", ""), "label": it["label"], "attack_type": it.get("attack_type", ""),
-                "path": it["path"], "score": score, "model_version": detector.version}
+                "path": rel_path(it["path"]), "score": score, "model_version": detector.version}
 
     batched = args.precropped and hasattr(detector, "p_fake")
     for csv_path in args.csv:
         with open(csv_path, encoding="utf-8") as fh:
-            items = [it for it in list(csv.DictReader(fh))[: args.limit] if it["path"] not in done]
+            items = [it for it in list(csv.DictReader(fh))[: args.limit] if rel_path(it["path"]) not in done]
         for it in items:
             img = cv2.imread(it["path"])
             if img is None:

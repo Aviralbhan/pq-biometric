@@ -1,0 +1,2 @@
+split,tag,model_version,threshold,bpcer,apcer_max,eer,eer_threshold,auc,n_bona_fide,n_attack,apcer[openforensics_fake]
+val,zero_shot,gend-clip-l14,0.9753831028938293,0.00480890913692736,0.7001318324713518,0.1409681513046533,0.8142319917678833,0.9298780638832185,3951.0,9861.0,0.7001318324713518
