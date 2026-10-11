@@ -75,7 +75,7 @@ Then run in parallel (asyncio + ONNX Runtime sessions loaded once at startup):
 | M4 Replay | Checks 1–6 + MediaPipe confirms the two actions appear in order | SCRIPT_FAIL |
 | M5 Injection | Rules + HistGradientBoosting on capture metadata and frame timing | INJECTION_FAIL |
 
-**Decision:** any failed check or module score above its threshold → reject. Otherwise accept if matcher similarity ≥ threshold. Per-module thresholds set at BPCER 0.5% on validation data, stored in `config.yaml`.
+**Decision:** any failed check or module score above its threshold → reject. Otherwise accept if matcher similarity ≥ threshold. Per-module thresholds set at BPCER 0.5% on validation data (M2: 1%, see §4), stored in `config.yaml`.
 
 **Signed verdict:** server signs `{challenge_id, tx_hash, sample_hash, scores{match, m1..m5}, model_versions, thresholds_version, decision, reason_code, timestamp}` with its own key (ML-DSA-65 in PQ mode) and stores it in SQLite: exactly one per consumed challenge, protocol rejections included. Only hashes, never face images.
 
@@ -102,6 +102,16 @@ Hybrid crypto mode, device/hardware attestation, monotonic counters, TLS channel
 | M5 | Own recordings: real webcam vs OBS Virtual Camera vs v4l2loopback | team members only, written consent |
 
 Rules: split by identity (no person in both train and test). Read CelebA-Spoof label meanings from its metadata files; do not assume indices. Report results per attack type and per morph method, not one average.
+
+**M2 protocol (changed 2026-10-11, approved):** FRLL has one neutral and one smiling front image per subject, so
+fixed val/test halves gave only 20 bona fide pairs each. Instead:
+- bona fide pairs in both directions: neutral_front → {smiling_front, four 3/4 views} and
+  smiling_front → {neutral_front, four 3/4 views} (10 per subject, 1,020 in all);
+- morph pairs: morph(A,B) → {smiling_front, four 3/4 views} of A and of B (same 3/4 probes, so pose cannot separate the classes);
+- 5-fold cross-validation grouped by identity (GroupKFold over subjects): every subject is tested once; a morph is
+  tested only in the fold holding both its subjects and trained on only when neither is in the test fold;
+- threshold at **BPCER 1%** (not 0.5%) on the pooled out-of-fold bona fide scores;
+- every M2 result states its exact number of bona fide pairs.
 
 ## 5. Repo layout
 ```

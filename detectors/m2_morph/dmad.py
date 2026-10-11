@@ -4,9 +4,13 @@ Feature = ArcFace(enrolled reference) - ArcFace(live probe), classified by an RB
 SVM. A morphed enrolment photo matches the live subject only partly, so the
 difference vector has a different distribution from a genuine reference-probe pair.
 
-Training pairs (scripts/train_m2.py, FRLL + FRLL-Morphs, split by identity):
+Training pairs (scripts/train_m2.py, FRLL + FRLL-Morphs, 5 identity-grouped folds):
   label 1: reference = morph of subjects A and B, probe = bona fide image of A or B
   label 0: reference = bona fide image of A,      probe = another bona fide image of A
+
+Score = logistic(SVM decision value), in (0, 1). The SVM is not probability-calibrated:
+sklearn's internal calibration CV is not grouped by identity and would leak subjects.
+The threshold is set on out-of-fold scores instead (BPCER 1%, see CLAUDE.md).
 """
 
 from __future__ import annotations
@@ -16,7 +20,6 @@ from typing import Any
 
 import joblib
 import numpy as np
-from sklearn.calibration import CalibratedClassifierCV
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import SVC
@@ -29,10 +32,14 @@ def dmad_feature(reference: np.ndarray, probe: np.ndarray) -> np.ndarray:
 
 
 def train_svm(features: np.ndarray, labels: np.ndarray, c: float = 1.0, gamma: str | float = "scale", seed: int = 0) -> Pipeline:
-    svm = SVC(kernel="rbf", C=c, gamma=gamma, random_state=seed)
-    model = make_pipeline(StandardScaler(), CalibratedClassifierCV(svm, ensemble=False))
+    model = make_pipeline(StandardScaler(), SVC(kernel="rbf", C=c, gamma=gamma, class_weight="balanced", random_state=seed))
     model.fit(features, labels)
     return model
+
+
+def svm_score(model: Pipeline, features: np.ndarray) -> np.ndarray:
+    """Morph score in (0, 1): logistic of the SVM decision value (monotonic, so thresholds are unaffected)."""
+    return 1.0 / (1.0 + np.exp(-model.decision_function(np.atleast_2d(features))))
 
 
 def save(model: Pipeline, path: str | Path, version: str) -> None:
@@ -49,7 +56,7 @@ class DMADMorph(Detector):
         self.version = bundle["version"]
 
     def score_pair(self, reference: np.ndarray, probe: np.ndarray) -> float:
-        return float(self.model.predict_proba(dmad_feature(reference, probe)[None, :])[0, 1])
+        return float(svm_score(self.model, dmad_feature(reference, probe))[0])
 
     def score(self, sample: Sample) -> float:
         if sample.template is None or sample.probe_embedding is None:

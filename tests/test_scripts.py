@@ -86,23 +86,33 @@ def test_filter_celeba_spoof_rejects_wrong_layout(tmp_path):
         filter_celeba_spoof.build(root, 112, 0.2, 0, None)
 
 
-def test_frll_morph_pairs_split_by_identity(tmp_path):
+def test_frll_morph_pairs_both_directions_and_three_quarter_probes(tmp_path):
     frll, morphs = tmp_path / "frll", tmp_path / "morphs"
-    for view in ("neutral_front", "smiling_front"):
+    views = ("neutral_front", "smiling_front", *download_frll_morphs.THREE_QUARTER)
+    for view in views:
         (frll / view).mkdir(parents=True)
-        for s in range(1, 11):
+        for s in range(1, 5):
             (frll / view / f"{s:03d}_03.jpg").write_bytes(b"x")
-    for method in ("amsl", "stylegan"):
-        (morphs / "FRLL-Morphs" / method).mkdir(parents=True)
-        for a, b in [(1, 2), (3, 4), (5, 6), (7, 8), (9, 10), (1, 9)]:
-            (morphs / "FRLL-Morphs" / method / f"{a:03d}_{b:03d}.jpg").write_bytes(b"x")
+    (morphs / "facelab_london" / "morph_amsl").mkdir(parents=True)
+    (morphs / "facelab_london" / "morph_amsl" / "001_002.jpg").write_bytes(b"x")
     rows = download_frll_morphs.build_pairs(morphs, frll)
-    split_of = {r["subject_a"]: r["split"] for r in rows if r["label"] == "bona_fide"}
-    for r in rows:
-        if r["label"] == "morph":
-            assert split_of[r["subject_a"]] == split_of[r["subject_b"]] == r["split"]
-    assert {r["morph_method"] for r in rows if r["label"] == "morph"} <= {"amsl", "stylegan"}
-    assert sum(r["label"] == "bona_fide" for r in rows) == 10
+    bona = [r for r in rows if r["label"] == "bona_fide"]
+    assert len(bona) == 4 * 10
+    assert {(r["reference_view"], r["probe_view"]) for r in bona if r["subject_a"] == "001"} == (
+        {("neutral_front", v) for v in views if v != "neutral_front"} | {("smiling_front", v) for v in views if v != "smiling_front"})
+    morph = [r for r in rows if r["label"] == "morph"]
+    assert len(morph) == 2 * 5 and {r["morph_method"] for r in morph} == {"amsl"}
+    assert "neutral_front" not in {r["probe_view"] for r in morph}
+
+
+def test_m2_folds_group_subjects():
+    import scripts.train_m2 as train_m2
+
+    subjects = [f"{i:03d}" for i in range(1, 103)]
+    fold = train_m2.fold_of_subjects(subjects, 5, 0)
+    assert set(fold) == set(subjects) and sorted(set(fold.values())) == [0, 1, 2, 3, 4]
+    sizes = sorted(list(fold.values()).count(k) for k in range(5))
+    assert sizes[0] >= 20 and sizes[-1] <= 21
 
 
 def test_openforensics_crops(tmp_path):
