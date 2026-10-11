@@ -1,6 +1,10 @@
 # Only for scripts that export or fine-tune PyTorch models (S7, S10). Not needed to run the server.
+# GPU build (RTX 4050, driver CUDA 13.x): install torch/torchvision first from the CUDA index, e.g.
+#   pip install torch torchvision --index-url https://download-r2.pytorch.org/whl/cu130
+# (download-r2 is PyTorch's own mirror; use download.pytorch.org if your network allows it.)
 torch
 torchvision
 transformers
 onnx
 pillow
+huggingface_hub

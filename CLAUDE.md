@@ -143,10 +143,14 @@ docker compose up
 
 Mark each item `[x]` when its **Done when** check passes. Work on one step per session.
 
-**Code status (11 Oct 2026):** the code for every step below is written and tested with stub models (`pytest -q`).
-The unticked boxes are waiting for their *Done when* evidence, which needs model weights
-(`scripts/fetch_models.py`), datasets (`scripts/download_*.py`, CelebA-Spoof by hand), a working
-webcam, or M5 recordings, not for more code. `docs/RUNBOOK.md` lists the commands per step.
+**Rules:** tick `[x]` only when the full *Done when* check passed with real models and real data.
+Steps with code but no real-model run go in the progress log as "code done, not verified".
+No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.md`.
+
+**Progress log**
+- 2026-10-11 S0, S1, S2: done (their *Done when* checks need no models: pip/pytest; NIST vectors; fakeredis reason-code tests).
+- 2026-10-11 S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13: code done, not verified (stub runs only).
+- 2026-10-11 S9 replay suite was run with stub detectors and synthetic video; that CSV was removed (rule above). Rerun with real models.
 
 ### Week 1 (12–18 Oct) — milestone: one genuine PQ transaction end to end
 - [x] **S0 Repo skeleton** (Abhijay) — layout, requirements.txt, config.yaml, .gitignore, README.
