@@ -1,5 +1,19 @@
 # Live demo runbook
 
+## Easiest: the demo page (no terminal)
+
+**Double-click `start_demo.bat`.** It starts the server in demo mode, waits until it is ready
+(about 30-60 s while the models load) and opens **http://127.0.0.1:8000/ui** in your browser.
+Click the cards in order: Enrol → Verify me → Photo attack → Replay → Morph → Deepfake →
+(Injection, only with OBS) → Signed verdict → Crypto overhead. Webcam steps open the usual
+webcam window on the laptop. Use the PQ / Classical switch before "Verify me" to show both modes.
+**Double-click `stop_demo.bat`** when finished. The page works with Wi-Fi off.
+
+If a card shows an error, press **Retry**; **Reset demo** clears the enrolment and history
+(server keys and models stay loaded) so you can start again from Enrol.
+
+## Terminal version (same steps, same code)
+
 Ten steps, one command each. Everything runs on this laptop with no network access needed
 (models, datasets and the NIST vectors are already on disk). Thresholds are the
 **preliminary** ones in `config.yaml` (calibrated on validation data only; final

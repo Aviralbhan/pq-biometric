@@ -95,6 +95,12 @@ BPCER 0.5%, 1% and 5%, plus AUC and EER, with thresholds set on data separate fr
 ## 3. Out of scope — refuse if suggested
 Hybrid crypto mode, device/hardware attestation, monotonic counters, TLS channel binding, CNSA 2.0 (ML-KEM-1024/ML-DSA-87), audit hash chains, second models per module, learned/logistic fusion, web frontend, dashboards, gated datasets (FaceForensics++, Celeb-DF, Idiap, SMDD).
 
+**Demo UI (review use only)** — exception approved 2026-10-12 for the progress review: one static page
+(`server/static/demo/`, plain HTML/CSS/JS, no CDN, no build step) at http://127.0.0.1:8000/ui, plus `/demo/api/*`
+(`server/demo_ui.py`). Mounted only when `PQBIO_DEMO_UI=1` (set by `scripts/demo.py server`, i.e. `start_demo.bat`) and
+only on a loopback host. It calls the same functions as `scripts/demo.py`; it changes no checks, thresholds, models or
+crypto. No other web frontend or dashboard.
+
 ## 4. Datasets (all open; never commit to git)
 | Use | Dataset | Source |
 |---|---|---|
@@ -283,3 +289,4 @@ Use pretrained MiniFASNet and GenD without fine-tuning. Present at the Week 3 mi
 - [ ] **S11 final calibration** — replace the preliminary thresholds (`preliminary-val-2026-10-12-10537d5e`); Docker build on Linux.
 - [ ] **S12 evaluation** — latency per stage on an idle machine, throughput, CPU/memory, attack × mode matrix, replay suite with real models.
 - [ ] **S13 report** — docs/RESULTS.md from CSVs, fresh-clone rebuild by a teammate, final demo.
+- [ ] **Demo UI webcam cards** — click-through of Enrol / Verify me / Photo attack / Replay / Signed verdict on the page with a person at the webcam (non-webcam cards checked 12 Oct).

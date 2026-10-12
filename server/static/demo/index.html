@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PQ Biometric Demo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <h1>AI-Based Biometric Evidence Authentication for Post-Quantum Digital Identity</h1>
+    <p class="lede">Your face proves it is really you at a live camera, five AI checks look for photos, morphs, deepfakes,
+      replays and fake cameras, and the evidence and the final verdict are protected with post-quantum cryptography.</p>
+    <nav class="tabs">
+      <button class="tab active" data-tab="demo">Demo</button>
+      <button class="tab" data-tab="results">Results</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="tab-demo">
+    <section class="panel" id="status">
+      <h2>System status</h2>
+      <div id="status-body" class="muted">Checking the server…</div>
+    </section>
+
+    <section class="panel">
+      <h2>How it works</h2>
+      <div class="flow">
+        <div class="box"><h3>1. Capture</h3>
+          <p>The laptop asks the server for a one-time challenge. You do two random actions (blink twice, turn left or right) on camera.</p>
+          <p>The app records 4 seconds and notes how the camera behaved.</p></div>
+        <div class="arrow">→</div>
+        <div class="box"><h3>2. Post-quantum channel</h3>
+          <p>Your device signs a short summary of the evidence with ML-DSA, a signature quantum computers cannot forge.</p>
+          <p>The video is encrypted with a key agreed through ML-KEM and sent to the server.</p></div>
+        <div class="arrow">→</div>
+        <div class="box"><h3>3. Verification server</h3>
+          <p>Six checks catch reused, expired, altered or re-targeted evidence. Then the face matcher and five AI detectors run.</p>
+          <p>The server signs the verdict with every score, so it can be re-checked later.</p></div>
+        <div class="arrow">→</div>
+        <div class="box"><h3>4. Evaluation</h3>
+          <p>The same pipeline runs with classical and with post-quantum crypto to measure the cost of PQC.</p>
+          <p>Detectors are measured on public datasets (Results tab).</p></div>
+      </div>
+    </section>
+
+    <section class="panel modebar">
+      <h2>Crypto mode</h2>
+      <div class="switch">
+        <label><input type="radio" name="mode" value="PQ" checked> Post-quantum (ML-KEM-768 + ML-DSA-65)</label>
+        <label><input type="radio" name="mode" value="CLASSICAL"> Classical (X25519 + Ed25519)</label>
+      </div>
+      <p class="muted small">Used by "Verify me" and "Photo attack". Enrolment always registers both.</p>
+    </section>
+
+    <section id="cards" class="cards"></section>
+  </section>
+
+  <section id="tab-results" hidden>
+    <section class="panel">
+      <h2>Results so far</h2>
+      <p class="muted">Read-only tables from <code>eval/results/*.csv</code>. Nothing on this page is computed in the browser.</p>
+      <div id="results-body" class="muted">Loading…</div>
+    </section>
+  </section>
+
+  <section class="panel" id="glossary">
+    <h2>Glossary</h2>
+    <dl>
+      <dt>PQC</dt><dd>Post-quantum cryptography: encryption and signatures designed to stay secure against future quantum computers.</dd>
+      <dt>ML-KEM</dt><dd>The NIST post-quantum standard (FIPS 203) for agreeing a secret key over the network.</dd>
+      <dt>ML-DSA</dt><dd>The NIST post-quantum standard (FIPS 204) for digital signatures.</dd>
+      <dt>Nonce</dt><dd>A random number used once; it makes every challenge unique so old evidence cannot be reused.</dd>
+      <dt>Transaction hash</dt><dd>A fingerprint of the payment details; the evidence is signed together with it, so it cannot approve a different payment.</dd>
+      <dt>Replay</dt><dd>Sending evidence that was already used once, hoping it is accepted again.</dd>
+      <dt>Presentation attack</dt><dd>Showing the camera a photo, a screen or a mask instead of a live face.</dd>
+      <dt>Morph</dt><dd>One face photo blended from two people, so that both could pass as its owner.</dd>
+      <dt>Deepfake</dt><dd>A face generated or swapped by AI.</dd>
+      <dt>Injection</dt><dd>Feeding a fake video stream into the app through a virtual camera instead of a real one.</dd>
+      <dt>APCER</dt><dd>Share of attacks wrongly accepted (lower is better).</dd>
+      <dt>BPCER</dt><dd>Share of genuine users wrongly rejected (lower is better).</dd>
+      <dt>EER</dt><dd>The error rate at the setting where APCER equals BPCER.</dd>
+      <dt>AUC</dt><dd>How well a detector separates attacks from genuine samples: 1.0 is perfect, 0.5 is guessing.</dd>
+    </dl>
+  </section>
+</main>
+<footer class="wrap muted small">Demo UI (review use only). Runs entirely on this laptop at 127.0.0.1; no internet needed.</footer>
+<script src="app.js"></script>
+</body>
+</html>

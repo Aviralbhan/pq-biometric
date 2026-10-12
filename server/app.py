@@ -12,7 +12,9 @@ to the server log and the SQLite request log; the signed verdict holds the rest.
 from __future__ import annotations
 
 import base64
+import ipaddress
 import logging
+import os
 import time
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -230,6 +232,14 @@ def create_app(config: dict[str, Any] | None = None) -> FastAPI:
             raise HTTPException(413, "request too large")
         payload, request_id = await server.verify(body)
         return JSONResponse(payload, headers={"X-Request-Id": str(request_id)})
+
+    if os.environ.get("PQBIO_DEMO_UI") == "1":  # Demo UI (review use only), never on a non-local address
+        host = str(config["server"].get("host", "127.0.0.1"))
+        if host != "localhost" and not ipaddress.ip_address(host).is_loopback:
+            raise RuntimeError(f"demo UI refused: server host {host} is not loopback")
+        from server import demo_ui
+
+        demo_ui.mount(app, server)
 
     return app
 
