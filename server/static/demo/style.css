@@ -74,3 +74,6 @@ dl { display: grid; grid-template-columns: 170px 1fr; gap: 6px 14px; margin: 0; 
 dt { font-weight: 600; } dd { margin: 0; }
 footer { padding: 10px 20px 30px; }
 h4 { margin: 14px 0 4px; }
+.modetag { display: inline-block; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 12px; vertical-align: middle; }
+.modetag.pq { background: #e3ecff; color: #1d4bb0; border: 1px solid #9db8f0; }
+.modetag.cl { background: #fff1dc; color: #9a5b00; border: 1px solid #f0c98d; }

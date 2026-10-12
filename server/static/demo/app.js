@@ -210,9 +210,12 @@ function trace(rec, req, mode) {
   return `<h4>What happened${total}</h4><ul class="trace">${items.map(([c, txt, tm]) => `<li class="${c}">${txt} ${tm}</li>`).join("")}</ul>`;
 }
 
+const MODE_LABEL = { PQ: "PQ (ML-KEM-768 + ML-DSA-65)", CLASSICAL: "CLASSICAL (X25519 + Ed25519)" };
+function modeTag(m) { return `<span class="modetag ${m === "PQ" ? "pq" : "cl"}">${esc(MODE_LABEL[m] || m)}</span>`; }
+
 function showVerdict(b) {
   const v = b.verdict; const rec = v.record;
-  return `${badge(rec.decision)} <span class="muted small">${esc(v.mode)} · signature ${v.signature_valid ? "valid" : "INVALID"}</span>
+  return `${badge(rec.decision)} ${modeTag(v.mode)} <span class="muted small">signature ${v.signature_valid ? "valid" : "INVALID"}</span>
     ${reasonLine(rec.reason_code)}${scoreTable(rec.scores, v.thresholds)}${trace(rec, b.request, v.mode)}`;
 }
 
@@ -321,5 +324,12 @@ document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () 
   $("#tab-demo").hidden = b.dataset.tab !== "demo";
   $("#tab-results").hidden = b.dataset.tab !== "results";
   if (b.dataset.tab === "results") loadResults();
+}));
+// Changing the crypto mode clears the results that depend on it, so old and new runs are never mixed up.
+document.querySelectorAll('input[name="mode"]').forEach((r) => r.addEventListener("change", () => {
+  for (const id of ["verify", "photo"]) {
+    const out = $(`#card-${id} .result`);
+    if (out) out.innerHTML = `<p class="note">Mode changed — click Run to try again in ${modeTag(mode())}</p>`;
+  }
 }));
 loadStatus();
