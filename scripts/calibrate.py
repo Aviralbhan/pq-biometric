@@ -5,7 +5,7 @@
 - M1, M3: threshold at BPCER 0.5% on the val bona fide scores in
   eval/results/scores_<module>_<tag>.csv (--m1-tag / --m3-tag pick the model variant).
 - M5: BPCER 0.5% on eval/results/scores_m5_injection.csv (its test folds; no separate val split).
-- M2: the BPCER 1% threshold of the deployed model (eval/results/m2_deploy_thresholds.csv,
+- M2: the BPCER 0.5% threshold of the deployed model (eval/results/m2_deploy_thresholds.csv,
   from its training bona fide scores; scripts/train_m2.py, CLAUDE.md).
 - M4: pass/fail, fixed at 0.5.
 - Matcher: threshold at FMR 0.1% on val impostors in eval/results/matcher_scores.csv.
@@ -33,7 +33,7 @@ from settings import DEFAULT_CONFIG, load_config  # noqa: E402
 MARKER = "# --- thresholds"
 SCORED = {"m1_pad": ("val", "scores_m1_pad_{m1}.csv"), "m3_deepfake": ("val", "scores_m3_deepfake_{m3}.csv"),
           "m5_injection": ("test", "scores_m5_injection.csv")}
-M2_TARGET = 0.01  # CLAUDE.md
+M2_TARGET = 0.005  # same operating point as every module (CLAUDE.md)
 
 
 def read(name: str) -> list[dict] | None:

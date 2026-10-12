@@ -10,7 +10,7 @@ Training pairs (scripts/train_m2.py, FRLL + FRLL-Morphs, 5 identity-grouped fold
 
 Score = logistic(SVM decision value), in (0, 1). The SVM is not probability-calibrated:
 sklearn's internal calibration CV is not grouped by identity and would leak subjects.
-The threshold is set on out-of-fold scores instead (BPCER 1%, see CLAUDE.md).
+The threshold is set on held-out scores instead (BPCER 0.5%, see CLAUDE.md).
 """
 
 from __future__ import annotations

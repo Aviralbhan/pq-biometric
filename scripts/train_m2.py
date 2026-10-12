@@ -18,7 +18,7 @@ Protocol (CLAUDE.md section 4, M2):
   (--threshold-source train uses the SVM's scores on its own training pairs instead; those
   sit at the margin, so all three thresholds collapse to one value. Kept only for comparison.)
 - The deployed model is retrained on all pairs; its thresholds come from the pooled outer
-  held-out bona fide scores (eval/results/m2_deploy_thresholds.csv; calibrate.py uses 1%).
+  held-out bona fide scores (eval/results/m2_deploy_thresholds.csv; calibrate.py uses 0.5%).
 
 Writes eval/results/m2_morph.csv (pooled and per-fold rows at each operating point, with
 exact bona fide and morph pair counts and the no-face count per method),
@@ -48,7 +48,7 @@ from eval.metrics import OPERATING_POINTS, auc, eer, operating_point_rows, thres
 from preprocessing.faces import FacePreprocessor, YuNetDetector  # noqa: E402
 from settings import ROOT, load_config, resolve  # noqa: E402
 
-DEPLOY_TARGET = 0.01  # the operating point calibrate.py uses for M2 (CLAUDE.md)
+DEPLOY_TARGET = 0.005  # the operating point calibrate.py uses for M2, as for every module (CLAUDE.md)
 CACHE = ROOT / "var" / "m2_embeddings.npz"
 
 

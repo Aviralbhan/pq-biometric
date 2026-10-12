@@ -75,7 +75,7 @@ Then run in parallel (asyncio + ONNX Runtime sessions loaded once at startup):
 | M4 Replay | Checks 1–6 + MediaPipe confirms the two actions appear in order | SCRIPT_FAIL |
 | M5 Injection | Rules + HistGradientBoosting on capture metadata and frame timing | INJECTION_FAIL |
 
-**Decision:** any failed check or module score above its threshold → reject. Otherwise accept if matcher similarity ≥ threshold. Per-module thresholds set at BPCER 0.5% on validation data (M2: 1%, see §4), stored in `config.yaml`.
+**Decision:** any failed check or module score above its threshold → reject. Otherwise accept if matcher similarity ≥ threshold. Per-module thresholds set at BPCER 0.5% on validation data (M2: on pooled held-out scores, see §4), stored in `config.yaml`.
 
 **Reporting (decision 2026-10-11):** every module is reported at three operating points, APCER (per attack type) at
 BPCER 0.5%, 1% and 5%, plus AUC and EER, with thresholds set on data separate from the data they are reported on.
@@ -115,7 +115,8 @@ fixed val/test halves gave only 20 bona fide pairs each. Instead:
   tested only in the fold holding both its subjects and trained on only when neither is in the test fold;
 - no leakage in the threshold (revised 2026-10-11): in each fold the thresholds come from that fold's *training*
   bona fide scores and are applied to its held-out pairs; held-out decisions are pooled. Reported at BPCER 0.5%, 1%
-  and 5% with EER/AUC; the deployed threshold is BPCER **1%** from the final model's training scores;
+  and 5% with EER/AUC; the deployed threshold is BPCER **0.5%** (like every module; changed from 1% on 2026-10-12) from the pooled
+  held-out bona fide scores;
 - all training pairs, RBF SVM with class_weight='balanced' (no morph subsampling);
 - every M2 result states its exact number of bona fide pairs and the "no face found" count per morph method.
 
@@ -201,6 +202,12 @@ No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.
   from the pooled held-out scores (m2_morph.csv, m2_deploy_thresholds.csv). The literal "fold training scores" rule
   collapses for an SVM (training bona fide scores sit at the margin: all thresholds 0.2690, held-out BPCER 37%);
   kept for comparison in m2_morph_train_score_thresholds.csv, not used.
+- 2026-10-12 M2 deployed at BPCER 0.5% like every module: threshold 0.5608 (achieved held-out BPCER 0.0059,
+  m2_deploy_thresholds.csv); config.yaml thresholds.m2_morph set, version "uncalibrated+m2-bpcer0.5pct".
+- 2026-10-12 S6 live check (Aviral, webcam, real models, uncalibrated thresholds except M2): enrolment OK in both modes;
+  CLASSICAL accepted (match 0.799, M3 0.428); PQ rejected by M3 GenD 0.611 > 0.5 (uncalibrated; match 0.850, M4 passed).
+  Protocol verified end to end in both modes and both signed verdicts verify; S6 not ticked (PQ not accepted).
+- 2026-10-12 S8: 10 bona fide webcam sessions recorded (aviral). OBS Studio is not installed, so no OBS sessions yet.
 - 2026-10-11 S7 (M3 part): LayerNorm-only tuning, 102,400 parameters, batch 16 fp16 (peak 4.86 GiB), 2 epochs on the
   80% tune split (3,182 real / 7,885 fake faces, 5,750 source images). Calib split (769 / 1,976): AUC 0.935 -> 0.989
   -> 0.997, EER 0.131 -> 0.042 -> 0.016 (fp16 GPU eval; m3_ln_tuning.csv). ONNX parity PASS (cosine min 1.000000 on
