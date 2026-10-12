@@ -269,3 +269,17 @@ Use pretrained MiniFASNet and GenD without fine-tuning. Present at the Week 3 mi
 | PQC overhead | crypto_bench + perf, two modes | Δ ms, Δ bytes, share of total |
 | Security–performance trade-off | attack_matrix + RESULTS.md | Attack × mode table |
 | Reproducible prototype | README, pinned versions, Docker | Fresh-clone rebuild |
+
+## 10. Leftover work (resume here after the 13 Oct progress review)
+
+- [ ] **Offline demo run** — second run of docs/DEMO.md steps a–i with Wi-Fi off (run 1 passed a–i with `PQBIO_OFFLINE_GUARD=1`).
+- [ ] **M3 Test-Dev results** — detached jobs write `scores_m3_deepfake_zero_shot.csv` / `scores_m3_deepfake_ln_tuned.csv`
+      (checkpointed; resume with `--resume`); then `scripts/compare_m3.py` and decide zero-shot vs tuned for config.yaml.
+      Overnight log: `var/overnight.log` (stops the jobs at 08:00 on 13 Oct if unfinished).
+- [ ] **Crypto benchmark table** — `eval/results/crypto_bench.csv` / `crypto_sizes.csv` from the overnight idle run; then
+      `python scripts/demo.py crypto` (demo step j) and `python scripts/progress_review.py`.
+- [ ] **M1 with CelebA-Spoof** — filter, zero-shot at three operating points, fine-tune, re-export, calibrate (S4, S5, S7, S10).
+- [ ] **M5 OBS recordings and classifier** — install OBS; obs_video / obs_image sessions; 40–60 per class across the team; `train_m5.py` (S8).
+- [ ] **S11 final calibration** — replace the preliminary thresholds (`preliminary-val-2026-10-12-10537d5e`); Docker build on Linux.
+- [ ] **S12 evaluation** — latency per stage on an idle machine, throughput, CPU/memory, attack × mode matrix, replay suite with real models.
+- [ ] **S13 report** — docs/RESULTS.md from CSVs, fresh-clone rebuild by a teammate, final demo.
