@@ -77,6 +77,9 @@ Then run in parallel (asyncio + ONNX Runtime sessions loaded once at startup):
 
 **Decision:** any failed check or module score above its threshold → reject. Otherwise accept if matcher similarity ≥ threshold. Per-module thresholds set at BPCER 0.5% on validation data (M2: 1%, see §4), stored in `config.yaml`.
 
+**Reporting (decision 2026-10-11):** every module is reported at three operating points, APCER (per attack type) at
+BPCER 0.5%, 1% and 5%, plus AUC and EER, with thresholds set on data separate from the data they are reported on.
+
 **Signed verdict:** server signs `{challenge_id, tx_hash, sample_hash, scores{match, m1..m5}, model_versions, thresholds_version, decision, reason_code, timestamp}` with its own key (ML-DSA-65 in PQ mode) and stores it in SQLite: exactly one per consumed challenge, protocol rejections included. Only hashes, never face images.
 
 **Stubs:** a module whose weights are missing runs as a stub (fixed score, version `stub`) when `detectors.allow_stubs` is true. The version is in every verdict and in `/health`, so a stubbed result can never pass as a real one.
@@ -110,8 +113,22 @@ fixed val/test halves gave only 20 bona fide pairs each. Instead:
 - morph pairs: morph(A,B) → {smiling_front, four 3/4 views} of A and of B (same 3/4 probes, so pose cannot separate the classes);
 - 5-fold cross-validation grouped by identity (GroupKFold over subjects): every subject is tested once; a morph is
   tested only in the fold holding both its subjects and trained on only when neither is in the test fold;
-- threshold at **BPCER 1%** (not 0.5%) on the pooled out-of-fold bona fide scores;
-- every M2 result states its exact number of bona fide pairs.
+- no leakage in the threshold (revised 2026-10-11): in each fold the thresholds come from that fold's *training*
+  bona fide scores and are applied to its held-out pairs; held-out decisions are pooled. Reported at BPCER 0.5%, 1%
+  and 5% with EER/AUC; the deployed threshold is BPCER **1%** from the final model's training scores;
+- all training pairs, RBF SVM with class_weight='balanced' (no morph subsampling);
+- every M2 result states its exact number of bona fide pairs and the "no face found" count per morph method.
+
+**Face detection (decision 2026-10-11):** YuNet score threshold 0.5 (was 0.8, which missed ~75% of StyleGAN morphs).
+At 0.5 weak false boxes appear, so the face used is the largest among detections within 0.1 of the best score
+(`preprocessing.face_score_margin`). The S3 matcher was re-run and is unchanged (see progress log).
+
+**M3 protocol (decision 2026-10-11):** the headline M3 result is zero-shot GenD on OpenForensics **Test-Dev** with
+thresholds set on Val. LayerNorm-only tuning is back in: Val split 80/20 by source image (seed 0) into tune / calib;
+1-2 epochs on the GPU, only the vision encoder's LayerNorm weights and biases trained (GenD's own loader, transformers
+4.56 venv); exported to ONNX with CPU parity; thresholds from the calib 20%; evaluated on Test-Dev and reported side
+by side with zero-shot (zero-shot also with calib-20% thresholds, for a like-for-like comparison). If it does not fit
+in GPU memory with fp16 at batch 4, report zero-shot only. The split-Val fallback is cancelled.
 
 ## 5. Repo layout
 ```
@@ -136,7 +153,8 @@ config.yaml  requirements.txt  Dockerfile  docker-compose.yml  README.md
 - No hard-coded paths; everything in `config.yaml`.
 - Develop and benchmark on Linux / WSL2 / Docker.
 - Never invent results; every number in docs must come from a CSV in `eval/results/`.
-- Small commits, one step per branch, merge via pull request.
+- Commit and push directly to `main` after each finished piece of work; run `git status` first and make sure no data, weights, keys, `.onnx` files or venv folders are included (decision 2026-10-12; no pull requests).
+- Latency/throughput are measured only in S12, on an otherwise idle machine.
 
 ## 7. Commands
 ```
@@ -169,16 +187,26 @@ No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.
   by up to 4.4e-3 (TF32) with the same class (eval/results/m3_gend_equivalence.csv).
 - 2026-10-11 Server: matcher, M1 (pretrained), M3, M4 real; M2 stub until S7 saves its model; M5 rules only.
   GenD scores 3 of the sampled frames per request (`detectors.m3_deepfake.max_frames`, CPU cost). `/health` lists stubs.
-- 2026-10-11 Webcam works again (status OK, 640x480 @ 30 fps). S6 live check needs a team member at the camera.
+- 2026-10-11 Webcam works again (status OK, 640x480 @ 30 fps). S6 live check waits until Aviral is at the camera.
 - 2026-10-11 S5 (M3 part): zero-shot GenD ONNX on OpenForensics Val, 3,951 real / 9,861 fake faces >= 112 px: AUC 0.930,
   EER 0.141; threshold at BPCER 0.5% set on these same Val real faces = 0.9754 -> APCER 0.700 (eval/results/m3_deepfake_zero_shot.csv).
   Test-Dev (independent) to be added. M1 zero-shot waits for CelebA-Spoof.
-- 2026-10-11 S7 (M2 part): D-MAD SVM, 5-fold GroupKFold, pooled out-of-fold: 1,002 bona fide pairs, threshold 0.4908 at
-  BPCER 1%; EER 0.0039, AUC 0.9999; APCER amsl 0.0038 (3,984 pairs), facemorpher 0.0022 (2,265), opencv 0.0022 (2,265),
-  stylegan 0.0000 (775), webmorph 0.0026 (2,265) (eval/results/m2_morph.csv). Caveat: YuNet (score 0.8) finds no face in
-  most StyleGAN morphs (226/300 sampled; all found at 0.5), so StyleGAN results cover only the confidently detected ~30%;
-  852 of 7,663 images had no face (9 FRLL 3/4 views, the rest morphs). Threshold is from the pooled out-of-fold scores
-  it is reported on (no separate validation set). config.yaml thresholds stay uncalibrated until S11.
+- 2026-10-11 S3 re-run at YuNet 0.5 with the score-margin face choice: threshold 0.2192 (unchanged); FNMR 0 / 0
+  (255 / 255 genuine); FMR 12/12,750 val, 13/12,750 test (was 12/12,600, 12/12,450); images without a face 9 -> 0.
+- 2026-10-11 S7 (M2 part), revised protocol, YuNet 0.5: 7,663 images, 0 without a face; 71,530 pairs; pooled held-out
+  over 1,020 bona fide pairs: EER 0.0031, AUC 0.9999. Thresholds per outer fold from an inner 4-fold identity-grouped
+  CV on that fold's training subjects. Achieved BPCER / APCER (amsl, facemorpher, opencv, stylegan, webmorph):
+  target 0.5%: 0.0059 / 0.0037, 0.0022, 0.0026, 0.0000, 0.0035; target 1%: 0.0137 / 0.0027, 0.0022, 0.0013, 0.0000,
+  0.0022; target 5%: 0.0529 / 0.0012, 0, 0, 0, 0.0009 (morph pairs 4,030 / 2,290 x4). Deployed threshold (1%) 0.5446
+  from the pooled held-out scores (m2_morph.csv, m2_deploy_thresholds.csv). The literal "fold training scores" rule
+  collapses for an SVM (training bona fide scores sit at the margin: all thresholds 0.2690, held-out BPCER 37%);
+  kept for comparison in m2_morph_train_score_thresholds.csv, not used.
+- 2026-10-11 S7 (M3 part): LayerNorm-only tuning, 102,400 parameters, batch 16 fp16 (peak 4.86 GiB), 2 epochs on the
+  80% tune split (3,182 real / 7,885 fake faces, 5,750 source images). Calib split (769 / 1,976): AUC 0.935 -> 0.989
+  -> 0.997, EER 0.131 -> 0.042 -> 0.016 (fp16 GPU eval; m3_ln_tuning.csv). ONNX parity PASS (cosine min 1.000000 on
+  200 calib faces); fake index 1 confirmed from labels. Test-Dev scoring in progress.
+- 2026-10-11 onnx_export.csv `cpu_ms_median` values were measured while other jobs loaded the CPU; they are not latency
+  results (S12 measures latency on an idle machine).
 - 2026-10-11 S4, S5 (M1), S6, S7 (M1), S8, S9, S11, S12, S13: code done, not verified.
 - 2026-10-11 S9 replay suite was run with stub detectors and synthetic video; that CSV was removed (rule above). Rerun with real models.
 
@@ -199,7 +227,7 @@ No stub numbers in `eval/results/` or `docs/`. Commands per step: `docs/RUNBOOK.
 ### Week 2 (19–25 Oct) — milestone: each piece works on its own
 - [ ] **S6 Capture client** (Aviral) — `enroll.py`, `capture.py`: challenge → actions → 4 s video → metadata → manifest → sign → encrypt → verify.
   Done when: a team member enrols and is accepted in both modes.
-- [ ] **S7 M1/M2/M3** (Krish) — fine-tune MiniFASNet; build D-MAD SVM on FRLL-Morphs (morph-ref vs genuine-ref pairs, identity split); evaluate GenD zero-shot (the optional LayerNorm-only tuning is dropped, decision 2026-10-11).
+- [ ] **S7 M1/M2/M3** (Krish) — fine-tune MiniFASNet; build D-MAD SVM on FRLL-Morphs (morph-ref vs genuine-ref pairs, identity split); evaluate GenD zero-shot and LayerNorm-only tuned (M3 protocol in §4).
   Done when: per-attack-type results CSV per module, including APCER on screen-replay types (PC/Pad/Phone) and per morph method.
 - [ ] **S8 M5 data + features** (Abhijay) — `record_m5.py` (bona_fide / obs / v4l2loopback, ~40–60 sessions each); `features.py`.
   Done when: feature CSV covers all three classes.

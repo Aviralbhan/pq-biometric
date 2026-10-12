@@ -85,6 +85,17 @@ def test_preprocessor_filters_small_faces():
     assert pre.process(np.zeros((480, 640, 3), np.uint8)) is None
 
 
+def test_face_choice_handles_both_frll_failure_cases():
+    real = Face((100, 100, 200, 240), ARCFACE_TEMPLATE / 112 * 200 + 100, 0.88)
+    weak_big = Face((90, 330, 260, 300), ARCFACE_TEMPLATE / 112 * 260 + 90, 0.65)  # subject 030
+    pre = FacePreprocessor(FixedDetector([real, weak_big]), min_face_px=112)
+    assert pre.best_face(np.zeros((700, 700, 3), np.uint8)) is real
+    small_confident = Face((358, 519, 200, 249), ARCFACE_TEMPLATE / 112 * 200 + 358, 0.837)  # subject 114
+    real_3q = Face((550, 375, 445, 566), ARCFACE_TEMPLATE / 112 * 445 + 550, 0.811)
+    pre = FacePreprocessor(FixedDetector([small_confident, real_3q]), min_face_px=112)
+    assert pre.best_face(np.zeros((1350, 1350, 3), np.uint8)) is real_3q
+
+
 def test_preprocessor_produces_all_crops():
     pre = FacePreprocessor(CenterFaceStub(), min_face_px=112, pad_scales=(2.7, 4.0))
     crops = pre.process(np.zeros((480, 640, 3), np.uint8))

@@ -7,7 +7,8 @@ the other tool(s) and test on the held-out tool, so the score says how well M5
 generalises to an injection tool it has not seen. Bona fide sessions are split by
 subject (one subject held out per fold when there are several). The device-name rule
 is switched off in these folds (the name would give the answer away); the CSV reports
-the classifier alone and with the rule.
+the classifier alone and with the rule, at BPCER 0.5%, 1% and 5% (thresholds from each
+fold's training bona fide scores).
 
 Writes eval/results/m5_features.csv, eval/results/scores_m5_injection.csv,
 eval/results/m5_injection.csv and the final model (all data) to
@@ -29,7 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from detectors.m5_injection.classifier import save, train  # noqa: E402
 from detectors.m5_injection.features import FEATURE_NAMES, extract, to_vector  # noqa: E402
 from eval.harness import RESULTS, write_csv  # noqa: E402
-from eval.metrics import detection_summary, threshold_at_bpcer  # noqa: E402
+from eval.metrics import operating_point_rows, thresholds_at  # noqa: E402
 from preprocessing.video import unpack_jpegs  # noqa: E402
 from settings import ROOT, load_config, resolve  # noqa: E402
 
@@ -48,7 +49,6 @@ def load_rows(root: Path, virtual_names: list[str]) -> list[dict]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--sessions", default=str(ROOT / "var" / "m5_sessions"))
-    ap.add_argument("--target-bpcer", type=float, default=0.005)
     ap.add_argument("--config")
     args = ap.parse_args(argv)
     config = load_config(args.config)
@@ -77,8 +77,7 @@ def main(argv: list[str] | None = None) -> int:
             continue
         model = train(*xy(train_rows))
         x_train, y_train = xy(train_rows)
-        train_bona_scores = model.predict_proba(x_train[y_train == 0])[:, 1]
-        thr = threshold_at_bpcer(train_bona_scores, args.target_bpcer)
+        thr = thresholds_at(model.predict_proba(x_train[y_train == 0])[:, 1])  # from this fold's training scores
         x_test, _ = xy(test_rows)
         scores = model.predict_proba(x_test)[:, 1]
         for r, s in zip(test_rows, scores):
@@ -90,8 +89,8 @@ def main(argv: list[str] | None = None) -> int:
         for variant in ("score", "score_with_rule"):
             attacks = {held_tool: [s[variant] for s in fold if s["label"] == "attack"]}
             bona_scores = [s[variant] for s in fold if s["label"] == "bona_fide"]
-            results.append({"fold": f"held_out={held_tool}", "variant": "classifier" if variant == "score" else "classifier+name_rule",
-                            **detection_summary(attacks, bona_scores, thr)})
+            results += operating_point_rows(attacks, bona_scores, thr, fold=f"held_out={held_tool}",
+                                            variant="classifier" if variant == "score" else "classifier+name_rule")
 
     write_csv(RESULTS / "scores_m5_injection.csv", score_rows)
     write_csv(RESULTS / "m5_injection.csv", results)
@@ -100,7 +99,7 @@ def main(argv: list[str] | None = None) -> int:
     save(final, path, f"m5-hgb-{date.today().isoformat()}-n{len(rows)}")
     print(f"model -> {path}")
     for r in results:
-        print(f"  {r['fold']:28} {r['variant']:22} APCER {r['apcer_max']:.3f}  BPCER {r['bpcer']:.3f}  EER {r['eer']:.3f}  AUC {r['auc']:.3f}")
+        print(f"  {r['fold']:28} {r['variant']:22} BPCER target {r['target_bpcer']:.1%}: APCER {r['apcer_max']:.3f}  BPCER {r['bpcer']:.3f}  EER {r['eer']:.3f}  AUC {r['auc']:.3f}")
     return 0
 
 

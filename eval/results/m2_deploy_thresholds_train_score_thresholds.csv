@@ -1,0 +1,4 @@
+target_bpcer,threshold,from,n_bona_fide
+0.005,0.5608379284635177,pooled 5-fold held-out bona fide scores,1020
+0.01,0.5445560663085972,pooled 5-fold held-out bona fide scores,1020
+0.05,0.45447390393155035,pooled 5-fold held-out bona fide scores,1020

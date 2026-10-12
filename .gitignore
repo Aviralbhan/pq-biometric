@@ -8,3 +8,4 @@ third_party/
 models/weights/*
 !models/weights/.gitkeep
 eval/results/*.tmp
+.claude/settings.local.json

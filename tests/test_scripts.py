@@ -163,7 +163,7 @@ def test_train_m5_leave_one_tool_out(tmp_path, results, monkeypatch):
 def test_calibrate_writes_thresholds(tmp_path, results):
     results.mkdir()
     rng = np.random.default_rng(0)
-    with open(results / "scores_m1_pad.csv", "w", newline="") as fh:
+    with open(results / "scores_m1_pad_zero_shot.csv", "w", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["split", "label", "attack_type", "score"])
         for s in rng.uniform(0, 0.3, 1000):

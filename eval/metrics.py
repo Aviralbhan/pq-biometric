@@ -107,3 +107,40 @@ def detection_summary(
     for k, v in attack_scores_by_type.items():
         row[f"apcer[{k}]"] = apcer(v, threshold)
     return row
+
+
+OPERATING_POINTS = (0.005, 0.01, 0.05)  # report every module at BPCER 0.5%, 1% and 5% (CLAUDE.md)
+
+
+def thresholds_at(bona_fide_scores: Iterable[float], targets: Iterable[float] = OPERATING_POINTS) -> dict[float, float]:
+    """Threshold per target BPCER, from one set of bona fide scores (calibration set)."""
+    b = _arr(bona_fide_scores)
+    return {t: threshold_at_bpcer(b, t) for t in targets}
+
+
+def operating_point_rows(
+    attack_scores_by_type: Mapping[str, Iterable[float]],
+    bona_fide_scores: Iterable[float],
+    thresholds: Mapping[float, float],
+    **extra: object,
+) -> list[dict[str, object]]:
+    """One row per operating point: the threshold (set elsewhere) applied to these scores.
+
+    Columns: target_bpcer, threshold, bpcer (achieved here), apcer per type and max, counts,
+    plus the threshold-free eer and auc of these scores.
+    """
+    attacks = {k: _arr(v) for k, v in attack_scores_by_type.items()}
+    bona = _arr(bona_fide_scores)
+    all_attacks = np.concatenate(list(attacks.values()))
+    e, _ = eer(all_attacks, bona)
+    a = auc(all_attacks, bona)
+    rows = []
+    for target, thr in sorted(thresholds.items()):
+        row: dict[str, object] = {**extra, "target_bpcer": target, "threshold": thr, "bpcer": bpcer(bona, thr)}
+        per = {k: apcer(v, thr) for k, v in attacks.items()}
+        row["apcer_max"] = max(per.values())
+        row.update({f"apcer[{k}]": v for k, v in per.items()})
+        row.update({"eer": e, "auc": a, "n_bona_fide": int(bona.size)})
+        row.update({f"n_attack[{k}]": int(v.size) for k, v in attacks.items()})
+        rows.append(row)
+    return rows

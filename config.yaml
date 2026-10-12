@@ -36,8 +36,9 @@ capture:
 
 preprocessing:
   yunet_model: models/weights/face_detection_yunet_2023mar.onnx
-  score_threshold: 0.8
+  score_threshold: 0.5            # YuNet confidence; 0.5 (was 0.8: missed ~75% of StyleGAN morphs, decision 2026-10-11)
   min_face_px: 112               # faces narrower than this are ignored
+  face_score_margin: 0.1         # pick the largest face among those within this of the best YuNet score
   sample_frames: 8               # frames sampled per video for matcher / M1 / M3
   gend_box_scale: 1.3            # square face box enlargement for the 224x224 GenD crop
   pad_scales: [2.7, 4.0]         # MiniFASNet patch scales (one per pretrained model)

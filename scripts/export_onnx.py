@@ -129,6 +129,23 @@ def export_m1(args, config) -> list[dict]:
     return rows
 
 
+def fake_index_from_labels(onnx_path: Path, images_csv: str | None, n: int = 200) -> int:
+    """Fake class = the output whose mean probability is higher on labelled fakes than on real faces."""
+    if not images_csv:
+        raise SystemExit("--skip-sample-check needs --images with label columns")
+    with open(images_csv, encoding="utf-8") as fh:
+        rows = list(csv.DictReader(fh))
+    sess = onnx_session(onnx_path, threads=8)
+    means = {}
+    for label in ("attack", "bona_fide"):
+        sel = [r for r in rows if r["label"] == label][:n]
+        x = np.concatenate([gend_preprocess([cv2.resize(cv2.imread(r["path"]), (224, 224))]) for r in sel])
+        means[label] = np.concatenate([softmax(sess.run(None, {"pixel_values": x[i : i + 16]})[0]) for i in range(0, len(x), 16)]).mean(0)
+    fake_index = int(np.argmax(means["attack"] - means["bona_fide"]))
+    print(f"  mean probabilities: fakes {means['attack'].round(3)}, real {means['bona_fide'].round(3)} -> fake index {fake_index}")
+    return fake_index
+
+
 def export_m3(args, config) -> list[dict]:
     import torch
 
@@ -137,19 +154,22 @@ def export_m3(args, config) -> list[dict]:
 
     model = GenD.from_pretrained(args.hf_dir)
     model.eval()
-    target = resolve(config["detectors"]["m3_deepfake"]["model"])
+    target = Path(args.out) if args.out else resolve(config["detectors"]["m3_deepfake"]["model"])
     target.parent.mkdir(parents=True, exist_ok=True)
     torch.onnx.export(model, torch.zeros(1, 3, 224, 224), str(target), opset_version=17, input_names=["pixel_values"],
                       output_names=["logits"], dynamic_axes={"pixel_values": {0: "N"}, "logits": {0: "N"}}, dynamo=False)
 
-    samples = {}
-    for label, url in GEND_SAMPLES.items():
-        data = urllib.request.urlopen(url, timeout=60).read()
-        img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
-        samples[label] = softmax(onnx_session(target).run(None, {"pixel_values": gend_preprocess([cv2.resize(img, (224, 224))])})[0])[0]
-    fake_index = int(np.argmax(samples["fake"]))
-    if int(np.argmax(samples["real"])) == fake_index:
-        raise SystemExit(f"GenD gives the same class for its fake and real examples: {samples}")
+    if args.skip_sample_check:
+        fake_index = fake_index_from_labels(target, args.images)
+    else:
+        samples = {}
+        for label, url in GEND_SAMPLES.items():
+            data = urllib.request.urlopen(url, timeout=60).read()
+            img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+            samples[label] = softmax(onnx_session(target).run(None, {"pixel_values": gend_preprocess([cv2.resize(img, (224, 224))])})[0])[0]
+        fake_index = int(np.argmax(samples["fake"]))
+        if int(np.argmax(samples["real"])) == fake_index:
+            raise SystemExit(f"GenD gives the same class for its fake and real examples: {samples}")
     configured = int(config["detectors"]["m3_deepfake"].get("fake_index", 1))
     if fake_index != configured:
         raise SystemExit(f"GenD fake class is {fake_index}; set detectors.m3_deepfake.fake_index to {fake_index} in config.yaml")
@@ -170,6 +190,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--checkpoints")
     ap.add_argument("--hf-dir", default=str(ROOT / "models" / "weights" / "m3_deepfake" / "GenD_CLIP_L_14"))
     ap.add_argument("--images", help="CSV with a path column; its faces are used for the PyTorch-vs-ONNX check")
+    ap.add_argument("--out", help="M3: ONNX path to write (default: detectors.m3_deepfake.model)")
+    ap.add_argument("--skip-sample-check", action="store_true",
+                    help="M3: confirm the fake class on the labelled --images instead of fetching GenD's two example images")
     ap.add_argument("--config")
     args = ap.parse_args(argv)
     config = load_config(args.config)

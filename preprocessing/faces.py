@@ -70,7 +70,7 @@ class YuNetDetector:
             Face(box=tuple(float(v) for v in r[:4]), landmarks=r[4:14].reshape(5, 2).astype(np.float32), score=float(r[14]))
             for r in rows
         ]
-        return sorted(faces, key=lambda f: f.box[2] * f.box[3], reverse=True)
+        return sorted(faces, key=lambda f: (f.score, f.box[2] * f.box[3]), reverse=True)  # most confident first
 
 
 class CenterFaceStub:
@@ -140,8 +140,10 @@ class FacePreprocessor:
         min_face_px: int = 112,
         gend_box_scale: float = 1.3,
         pad_scales: tuple[float, ...] = (2.7, 4.0),
+        score_margin: float = 0.1,
     ):
         self.detector = detector
+        self.score_margin = score_margin
         self.min_face_px = min_face_px
         self.gend_box_scale = gend_box_scale
         self.pad_scales = tuple(pad_scales)
@@ -150,9 +152,18 @@ class FacePreprocessor:
     def version(self) -> str:
         return self.detector.version
 
-    def largest_face(self, img: np.ndarray) -> Face | None:
+    def best_face(self, img: np.ndarray) -> Face | None:
+        """Among faces >= min_face_px whose score is within score_margin of the best, the largest.
+
+        Neither "largest" nor "most confident" alone is safe on FRLL at YuNet score 0.5: a weak false
+        box below the chin can be larger than the face (030: 0.65 vs 0.88), and a small false box next
+        to a 3/4 face can be slightly more confident than the face (114: 0.837 vs 0.811).
+        """
         faces = [f for f in self.detector.detect(img) if f.width >= self.min_face_px]
-        return faces[0] if faces else None
+        if not faces:
+            return None
+        top = max(f.score for f in faces)
+        return max((f for f in faces if f.score >= top - self.score_margin), key=lambda f: f.box[2] * f.box[3])
 
     def crops(self, img: np.ndarray, face: Face) -> FaceCrops:
         return FaceCrops(
@@ -163,7 +174,7 @@ class FacePreprocessor:
         )
 
     def process(self, img: np.ndarray) -> FaceCrops | None:
-        face = self.largest_face(img)
+        face = self.best_face(img)
         return self.crops(img, face) if face else None
 
     @classmethod
@@ -177,4 +188,4 @@ class FacePreprocessor:
             detector = CenterFaceStub()
         else:
             raise FileNotFoundError(path)
-        return cls(detector, p["min_face_px"], p["gend_box_scale"], tuple(p["pad_scales"]))
+        return cls(detector, p["min_face_px"], p["gend_box_scale"], tuple(p["pad_scales"]), p.get("face_score_margin", 0.1))

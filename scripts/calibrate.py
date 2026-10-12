@@ -2,9 +2,11 @@
 
     python scripts/calibrate.py [--target-bpcer 0.005] [--target-fmr 0.001]
 
-- M1, M3, M5: threshold at BPCER 0.5% on the val bona fide scores in
-  eval/results/scores_<module>.csv (M5 uses its test folds: it has no separate val split).
-- M2: BPCER 1% on its pooled out-of-fold bona fide scores (5-fold GroupKFold; CLAUDE.md).
+- M1, M3: threshold at BPCER 0.5% on the val bona fide scores in
+  eval/results/scores_<module>_<tag>.csv (--m1-tag / --m3-tag pick the model variant).
+- M5: BPCER 0.5% on eval/results/scores_m5_injection.csv (its test folds; no separate val split).
+- M2: the BPCER 1% threshold of the deployed model (eval/results/m2_deploy_thresholds.csv,
+  from its training bona fide scores; scripts/train_m2.py, CLAUDE.md).
 - M4: pass/fail, fixed at 0.5.
 - Matcher: threshold at FMR 0.1% on val impostors in eval/results/matcher_scores.csv.
 A module without a scores file keeps its current threshold and is listed as such.
@@ -29,8 +31,9 @@ from eval.metrics import threshold_at_bpcer, threshold_at_fmr  # noqa: E402
 from settings import DEFAULT_CONFIG, load_config  # noqa: E402
 
 MARKER = "# --- thresholds"
-SCORED = {"m1_pad": "val", "m2_morph": "oof", "m3_deepfake": "val", "m5_injection": "test"}
-TARGET_OVERRIDE = {"m2_morph": 0.01}  # M2: few bona fide pairs, see CLAUDE.md
+SCORED = {"m1_pad": ("val", "scores_m1_pad_{m1}.csv"), "m3_deepfake": ("val", "scores_m3_deepfake_{m3}.csv"),
+          "m5_injection": ("test", "scores_m5_injection.csv")}
+M2_TARGET = 0.01  # CLAUDE.md
 
 
 def read(name: str) -> list[dict] | None:
@@ -55,19 +58,28 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--target-fmr", type=float, default=0.001)
     ap.add_argument("--config", default=str(DEFAULT_CONFIG))
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--m1-tag", default="zero_shot", help="which scores_m1_pad_<tag>.csv to calibrate on")
+    ap.add_argument("--m3-tag", default="zero_shot", help="which scores_m3_deepfake_<tag>.csv to calibrate on")
     args = ap.parse_args(argv)
     config = load_config(args.config)
     new = dict(config["thresholds"])
     report = []
-    for module, split in SCORED.items():
-        rows = read(f"scores_{module}.csv")
+    for module, (split, pattern) in SCORED.items():
+        name = pattern.format(m1=args.m1_tag, m3=args.m3_tag)
+        rows = read(name)
         bona = [float(r["score"]) for r in rows or [] if r["split"] == split and r["label"] == "bona_fide"]
-        target = TARGET_OVERRIDE.get(module, args.target_bpcer)
+        target = args.target_bpcer
         if bona:
             new[module] = round(threshold_at_bpcer(bona, target), 6)
-            report.append({"module": module, "threshold": new[module], "source": f"scores_{module}.csv[{split}]", "n": len(bona), "target": f"BPCER {target}"})
+            report.append({"module": module, "threshold": new[module], "source": f"{name}[{split}]", "n": len(bona), "target": f"BPCER {target}"})
         else:
             report.append({"module": module, "threshold": new[module], "source": "unchanged (no scores)", "n": 0, "target": ""})
+    m2 = [r for r in read("m2_deploy_thresholds.csv") or [] if float(r["target_bpcer"]) == M2_TARGET]
+    if m2:
+        new["m2_morph"] = round(float(m2[0]["threshold"]), 6)
+        report.append({"module": "m2_morph", "threshold": new["m2_morph"], "source": "m2_deploy_thresholds.csv", "n": int(m2[0]["n_bona_fide"]), "target": f"BPCER {M2_TARGET}"})
+    else:
+        report.append({"module": "m2_morph", "threshold": new["m2_morph"], "source": "unchanged (no scores)", "n": 0, "target": ""})
     new["m4_replay"] = 0.5
     report.append({"module": "m4_replay", "threshold": 0.5, "source": "fixed (pass/fail)", "n": 0, "target": ""})
     rows = read("matcher_scores.csv")

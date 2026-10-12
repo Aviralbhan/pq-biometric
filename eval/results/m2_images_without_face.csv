@@ -1,0 +1,12 @@
+folder,images,without_face
+morph_amsl,2175,0
+morph_facemorpher,1219,0
+morph_opencv,1219,0
+morph_stylegan,1219,0
+morph_webmorph,1219,0
+neutral_front,102,0
+neutral_left_3quarter,102,0
+neutral_right_3quarter,102,0
+smiling_front,102,0
+smiling_left_3quarter,102,0
+smiling_right_3quarter,102,0
