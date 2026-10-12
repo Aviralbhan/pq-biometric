@@ -271,13 +271,35 @@ async function resetDemo() {
 
 // ---- results tab -------------------------------------------------------------------------
 const RESULT_VIEWS = [
-  ["matcher", "Face matcher on FRLL (threshold at FMR 0.1%)", (r) => r.view === "all", ["split", "threshold", "fmr", "fnmr", "n_genuine", "n_impostor"]],
+  ["matcher", "Face matcher on FRLL (threshold set at a 0.1% false match rate)", (r) => r.view === "all", ["split", "threshold", "fmr", "fnmr", "n_genuine", "n_impostor"]],
   ["m2", "M2 morph detection, pooled held-out (per morph method)", (r) => r.rows === "pooled_held_out", null],
-  ["m3_zero_shot", "M3 deepfake, zero-shot GenD (thresholds from Val)", () => true, ["split", "target_bpcer", "threshold", "bpcer", "apcer_max", "eer", "auc", "n_bona_fide"]],
-  ["m3_compare", "M3 on Test-Dev: zero-shot vs LayerNorm-tuned", () => true, ["model", "thresholds_from", "target_bpcer", "bpcer", "apcer_max", "eer", "auc"]],
+  ["m3_zero_shot", "M3 deepfake, zero-shot GenD (thresholds set on the validation set)", () => true, ["split", "target_bpcer", "threshold", "bpcer", "apcer_max", "eer", "auc", "n_bona_fide"]],
+  ["m3_compare", "M3 on the Test-Dev set: zero-shot vs LayerNorm-tuned", () => true, ["model", "thresholds_from", "target_bpcer", "bpcer", "apcer_max", "eer", "auc"]],
   ["replay", "Replay suite (protocol attacks)", () => true, ["mode", "case", "runs", "expected_code", "correct_code_rate"]],
   ["genuine", "Genuine webcam captures (all of them, including rejections)", () => true, ["request", "phase", "mode", "decision", "reason_code", "match", "m1_pad", "m2_morph", "m3_deepfake", "m4_replay", "m5_injection"]],
 ];
+
+// Full names for the CSV column headers (the values themselves are shown exactly as in the CSV).
+const COLUMN_NAMES = {
+  split: "Data split", view: "Probe view", threshold: "Decision threshold",
+  fmr: "False match rate (FMR)", fnmr: "False non-match rate (FNMR)",
+  n_genuine: "Genuine pairs tested", n_impostor: "Impostor pairs tested",
+  target_bpcer: "Target bona fide rejection rate (BPCER target)",
+  bpcer: "Bona fide presentation classification error rate (BPCER)",
+  apcer_max: "Attack presentation classification error rate (APCER)",
+  eer: "Equal error rate (EER)", auc: "Area under the ROC curve (AUC)",
+  n_bona_fide: "Bona fide (genuine) samples tested",
+  model: "Model", thresholds_from: "Thresholds set on", mode: "Crypto mode", case: "Attack",
+  runs: "Runs", expected_code: "Expected reason code", correct_code_rate: "Rejected with the expected code",
+  request: "Request", phase: "Phase", decision: "Decision", reason_code: "Reason code",
+  match: "Face match score", m1_pad: "M1 presentation attack score", m2_morph: "M2 morph score",
+  m3_deepfake: "M3 deepfake score", m4_replay: "M4 live actions score", m5_injection: "M5 injection score",
+};
+function columnName(c) {
+  const m = /^apcer\[(.+)\]$/.exec(c);
+  if (m) return `Attack presentation classification error rate (APCER), ${m[1]} morphs`;
+  return COLUMN_NAMES[c] || c;
+}
 
 async function loadResults() {
   let data;
@@ -288,7 +310,7 @@ async function loadResults() {
     const rows = t.rows.filter(keep);
     const columns = cols || t.columns.filter((c) => c === "target_bpcer" || c === "bpcer" || c.startsWith("apcer[") || c === "eer" || c === "auc" || c === "n_bona_fide");
     const fmt = (c, v) => (v !== "" && !isNaN(Number(v)) && String(v).includes(".") ? num(v, 4) : esc(v));
-    return `<h4>${title} <span class="muted small">${esc(t.file)}</span></h4><table><tr>${columns.map((c) => `<th>${esc(c)}</th>`).join("")}</tr>
+    return `<h4>${title} <span class="muted small">${esc(t.file)}</span></h4><table><tr>${columns.map((c) => `<th title="${esc(c)}">${esc(columnName(c))}</th>`).join("")}</tr>
       ${rows.map((r) => `<tr>${columns.map((c) => `<td class="num">${fmt(c, r[c])}</td>`).join("")}</tr>`).join("")}</table>`;
   }).join("");
 }

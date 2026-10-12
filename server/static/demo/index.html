@@ -30,20 +30,20 @@
       <h2>How it works</h2>
       <div class="flow">
         <div class="box"><h3>1. Capture</h3>
-          <p>The laptop asks the server for a one-time challenge. You do two random actions (blink twice, turn left or right) on camera.</p>
-          <p>The app records 4 seconds and notes how the camera behaved.</p></div>
+          <p>You look at the webcam and do two quick actions the system picks at random, like "blink twice" or "turn your head left".</p>
+          <p>A recording made earlier cannot know these actions, so this proves a real person is there right now.</p></div>
         <div class="arrow">→</div>
         <div class="box"><h3>2. Post-quantum channel</h3>
-          <p>Your device signs a short summary of the evidence with ML-DSA, a signature quantum computers cannot forge.</p>
-          <p>The video is encrypted with a key agreed through ML-KEM and sent to the server.</p></div>
+          <p>Your laptop puts a tamper-proof seal (a digital signature) on the video, then locks it in an envelope only the server can open.</p>
+          <p>Both use new post-quantum methods (ML-DSA and ML-KEM), so even a future quantum computer cannot fake the seal or open the envelope.</p></div>
         <div class="arrow">→</div>
         <div class="box"><h3>3. Verification server</h3>
-          <p>Six checks catch reused, expired, altered or re-targeted evidence. Then the face matcher and five AI detectors run.</p>
-          <p>The server signs the verdict with every score, so it can be re-checked later.</p></div>
+          <p>First the server checks the envelope: is it new, unopened, meant for this exact payment, and really from your laptop?</p>
+          <p>Then AI checks the face: is it you, and is it live, not a photo, a blend of two faces, a deepfake or a fake camera? The final yes/no is sealed too, so nobody can change it later.</p></div>
         <div class="arrow">→</div>
         <div class="box"><h3>4. Evaluation</h3>
-          <p>The same pipeline runs with classical and with post-quantum crypto to measure the cost of PQC.</p>
-          <p>Detectors are measured on public datasets (Results tab).</p></div>
+          <p>We run everything twice, once with today's cryptography and once with post-quantum cryptography, to measure how much extra time and data the new one costs.</p>
+          <p>We also test each AI check on thousands of public sample photos (see the Results tab).</p></div>
       </div>
     </section>
 
