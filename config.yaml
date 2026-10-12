@@ -54,11 +54,12 @@ detectors:
       - models/weights/m1_pad/2.7_80x80_MiniFASNetV2.onnx
       - models/weights/m1_pad/4_0_0_80x80_MiniFASNetV1SE.onnx
     version: minifasnet-pretrained
+    decision_rule: argmax        # Silent-Face rule (real iff class 1 is top); p_real once CelebA-Spoof calibrates M1
   m2_morph:
     model: models/weights/m2_morph/dmad_svm.joblib
   m3_deepfake:
-    model: models/weights/m3_deepfake/gend_clip_l14.onnx
-    version: gend-clip-l14
+    model: models/weights/m3_deepfake/gend_clip_l14_ln.onnx   # LayerNorm-tuned (S7); zero-shot: gend_clip_l14.onnx / gend-clip-l14
+    version: gend-clip-l14-ln-tuned
     fake_index: 1                # softmax index of "fake"; confirmed by scripts/export_onnx.py
     max_frames: 3                # GenD runs on this many of the sampled frames (CPU cost ~0.2-0.6 s each)
     threads: 8                   # ONNX Runtime threads for GenD (the other modules use onnx_threads)
@@ -87,11 +88,12 @@ detectors:
       - splitcam
 
 # --- thresholds (written by scripts/calibrate.py; edit by hand only before calibration) ---
+# PRELIMINARY: calibrated on validation data only (never on webcam captures); final calibration is S11.
 thresholds:
-  version: uncalibrated+m2-bpcer0.5pct   # only M2 is set from data so far (S7); the rest waits for calibrate.py (S11)
-  match: 0.35                    # accept if cosine similarity >= this
-  m1_pad: 0.5                    # reject if score > threshold (all modules below)
-  m2_morph: 0.560838              # BPCER 0.5% from pooled held-out bona fide scores (eval/results/m2_deploy_thresholds.csv)
-  m3_deepfake: 0.5
+  version: preliminary-val-2026-10-12-10537d5e
+  match: 0.219182
+  m1_pad: 0.5
+  m2_morph: 0.560838
+  m3_deepfake: 0.918158
   m4_replay: 0.5
   m5_injection: 0.5

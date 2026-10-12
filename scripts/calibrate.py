@@ -1,6 +1,7 @@
 """Set decision thresholds from validation scores and write them into config.yaml.
 
     python scripts/calibrate.py [--target-bpcer 0.005] [--target-fmr 0.001]
+    python scripts/calibrate.py --preliminary --m1-argmax [--m3-tag ln_tuned --m3-split calib]   # before S11 data exists
 
 - M1, M3: threshold at BPCER 0.5% on the val bona fide scores in
   eval/results/scores_<module>_<tag>.csv (--m1-tag / --m3-tag pick the model variant).
@@ -10,6 +11,11 @@
 - M4: pass/fail, fixed at 0.5.
 - Matcher: threshold at FMR 0.1% on val impostors in eval/results/matcher_scores.csv.
 A module without a scores file keeps its current threshold and is listed as such.
+--m1-argmax: no M1 data yet; M1 uses the pretrained Silent-Face argmax rule (threshold 0.5,
+  requires detectors.m1_pad.decision_rule: argmax). M5 without a classifier uses its virtual-camera
+  name rule (scores 0 or 1, threshold 0.5).
+--preliminary: labels the block "preliminary, calibrated on validation data" (version preliminary-...).
+The scores used for M3 must come from the model version configured in detectors.m3_deepfake.
 
 Replaces the thresholds block at the end of config.yaml and writes eval/results/thresholds.csv.
 """
@@ -44,8 +50,11 @@ def read(name: str) -> list[dict] | None:
         return list(csv.DictReader(fh))
 
 
-def render(thresholds: dict) -> str:
-    lines = [f"{MARKER} (written by scripts/calibrate.py; edit by hand only before calibration) ---", "thresholds:"]
+def render(thresholds: dict, preliminary: bool = False) -> str:
+    lines = [f"{MARKER} (written by scripts/calibrate.py; edit by hand only before calibration) ---"]
+    if preliminary:
+        lines.append("# PRELIMINARY: calibrated on validation data only (never on webcam captures); final calibration is S11.")
+    lines.append("thresholds:")
     lines.append(f"  version: {thresholds['version']}")
     for key in ("match", "m1_pad", "m2_morph", "m3_deepfake", "m4_replay", "m5_injection"):
         lines.append(f"  {key}: {thresholds[key]!r}")
@@ -60,18 +69,36 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--m1-tag", default="zero_shot", help="which scores_m1_pad_<tag>.csv to calibrate on")
     ap.add_argument("--m3-tag", default="zero_shot", help="which scores_m3_deepfake_<tag>.csv to calibrate on")
+    ap.add_argument("--m3-split", default="val", help="split of that file whose bona fide scores set the M3 threshold")
+    ap.add_argument("--m1-argmax", action="store_true", help="M1 on the pretrained argmax rule (threshold 0.5)")
+    ap.add_argument("--preliminary", action="store_true")
     args = ap.parse_args(argv)
     config = load_config(args.config)
     new = dict(config["thresholds"])
     report = []
-    for module, (split, pattern) in SCORED.items():
+    scored = dict(SCORED)
+    scored["m3_deepfake"] = (args.m3_split, scored["m3_deepfake"][1])
+    if args.m1_argmax:
+        if config["detectors"]["m1_pad"].get("decision_rule") != "argmax":
+            raise SystemExit("--m1-argmax needs detectors.m1_pad.decision_rule: argmax in the config")
+        scored.pop("m1_pad")
+        new["m1_pad"] = 0.5
+        report.append({"module": "m1_pad", "threshold": 0.5, "source": "pretrained Silent-Face argmax rule (no M1 data yet)", "n": 0, "target": ""})
+    for module, (split, pattern) in scored.items():
         name = pattern.format(m1=args.m1_tag, m3=args.m3_tag)
         rows = read(name)
+        if module == "m3_deepfake" and rows:
+            versions = {r.get("model_version") for r in rows}
+            if versions != {config["detectors"]["m3_deepfake"]["version"]}:
+                raise SystemExit(f"{name} is from {versions}, but config runs {config['detectors']['m3_deepfake']['version']}")
         bona = [float(r["score"]) for r in rows or [] if r["split"] == split and r["label"] == "bona_fide"]
         target = args.target_bpcer
         if bona:
             new[module] = round(threshold_at_bpcer(bona, target), 6)
             report.append({"module": module, "threshold": new[module], "source": f"{name}[{split}]", "n": len(bona), "target": f"BPCER {target}"})
+        elif module == "m5_injection":
+            new[module] = 0.5
+            report.append({"module": module, "threshold": 0.5, "source": "virtual-camera name rule (no classifier yet)", "n": 0, "target": ""})
         else:
             report.append({"module": module, "threshold": new[module], "source": "unchanged (no scores)", "n": 0, "target": ""})
     m2 = [r for r in read("m2_deploy_thresholds.csv") or [] if float(r["target_bpcer"]) == M2_TARGET]
@@ -91,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         report.append({"module": "match", "threshold": new["match"], "source": "unchanged (no scores)", "n": 0, "target": ""})
 
     digest = hashlib.sha256(json.dumps({k: new[k] for k in sorted(new) if k != "version"}).encode()).hexdigest()[:8]
-    new["version"] = f"cal-{date.today().isoformat()}-{digest}"
+    new["version"] = f"{'preliminary-val' if args.preliminary else 'cal'}-{date.today().isoformat()}-{digest}"
     for r in report:
         print(f"  {r['module']:13} {r['threshold']:<10} {r['source']} {r['target']}")
     if args.dry_run:
@@ -100,7 +127,7 @@ def main(argv: list[str] | None = None) -> int:
     text = path.read_text(encoding="utf-8")
     if MARKER not in text:
         raise SystemExit(f"{path} has no '{MARKER}' block to replace")
-    path.write_text(text[: text.index(MARKER)] + render(new), encoding="utf-8")
+    path.write_text(text[: text.index(MARKER)] + render(new, args.preliminary), encoding="utf-8")
     write_csv(RESULTS / "thresholds.csv", [{**r, "version": new["version"]} for r in report])
     print(f"thresholds {new['version']} -> {path}")
     return 0

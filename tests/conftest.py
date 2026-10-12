@@ -29,6 +29,8 @@ def stub_config(tmp_path: Path, **overrides: Any) -> dict[str, Any]:
             "m4_replay": {"landmarker": missing},
             "m5_injection": {"model": missing},
         },
+        # Fixed test thresholds: tests must not depend on whatever calibration config.yaml holds.
+        "thresholds": {"version": "test", "match": 0.35, "m1_pad": 0.5, "m2_morph": 0.5, "m3_deepfake": 0.5, "m4_replay": 0.5, "m5_injection": 0.5},
     }
     from settings import deep_merge
 

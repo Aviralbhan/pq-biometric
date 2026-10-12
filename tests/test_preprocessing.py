@@ -96,6 +96,13 @@ def test_face_choice_handles_both_frll_failure_cases():
     assert pre.best_face(np.zeros((1350, 1350, 3), np.uint8)) is real_3q
 
 
+def test_small_real_face_is_not_replaced_by_false_box():
+    real_small = Face((300, 200, 105, 140), ARCFACE_TEMPLATE / 112 * 105 + 300, 0.93)
+    false_big = Face((0, 300, 200, 180), ARCFACE_TEMPLATE / 112 * 200, 0.55)
+    pre = FacePreprocessor(FixedDetector([real_small, false_big]), min_face_px=112)
+    assert pre.best_face(np.zeros((480, 640, 3), np.uint8)) is None
+
+
 def test_preprocessor_produces_all_crops():
     pre = FacePreprocessor(CenterFaceStub(), min_face_px=112, pad_scales=(2.7, 4.0))
     crops = pre.process(np.zeros((480, 640, 3), np.uint8))

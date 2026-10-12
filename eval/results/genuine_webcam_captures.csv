@@ -1,0 +1,33 @@
+request,phase,mode,decision,reason_code,match,m1_pad,m2_morph,m3_deepfake,m4_replay,m5_injection,m3_version,thresholds_version
+1,S6 live check (uncalibrated thresholds),PQ,rejected,DEEPFAKE_FAIL,0.850382,0.00729,0.15638,0.611164,0.0,0.0,gend-clip-l14,uncalibrated+m2-bpcer0.5pct
+2,S6 live check (uncalibrated thresholds),CLASSICAL,accepted,,0.799146,0.004772,0.17522,0.427866,0.0,0.0,gend-clip-l14,uncalibrated+m2-bpcer0.5pct
+3,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,0.020571,0.047169,0.969281,0.401965,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+4,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,-0.010413,0.071614,0.975187,0.148875,1.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+5,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,-0.034242,0.006529,0.970895,0.732167,1.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+6,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,-0.042298,0.02504,0.972061,0.888119,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+7,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,-0.061933,3e-06,0.97519,0.667761,1.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+8,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,-0.050036,2.2e-05,0.975507,0.366599,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+9,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,-0.059906,4.1e-05,0.975994,0.377689,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+10,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,-0.041196,6e-05,0.974318,0.390728,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+11,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,-0.051317,3.9e-05,0.973112,0.204616,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+12,"zero-shot M3, before re-enrolment (conditions changed)",PQ,rejected,MORPH_FLAG,-0.054561,0.000342,0.975474,0.593473,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+13,"zero-shot M3, after re-enrolment",PQ,accepted,,0.845079,0.000848,0.253832,0.238942,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+14,"zero-shot M3, after re-enrolment",PQ,accepted,,0.860056,0.001143,0.129802,0.214144,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+15,"zero-shot M3, after re-enrolment",PQ,accepted,,0.865628,0.000156,0.15442,0.126318,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+16,"zero-shot M3, after re-enrolment",PQ,accepted,,0.811834,0.002584,0.273322,0.155258,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+17,"zero-shot M3, after re-enrolment",PQ,accepted,,0.872419,0.005332,0.110778,0.114832,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+18,"zero-shot M3, after re-enrolment",CLASSICAL,accepted,,0.86007,0.004062,0.175321,0.182339,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+19,"zero-shot M3, after re-enrolment",CLASSICAL,accepted,,0.881296,0.000413,0.108103,0.34982,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+20,"zero-shot M3, after re-enrolment",CLASSICAL,accepted,,0.799695,0.004252,0.171254,0.212902,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+21,"zero-shot M3, after re-enrolment",CLASSICAL,accepted,,0.874064,0.000739,0.116403,0.121794,0.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+22,"zero-shot M3, after re-enrolment",CLASSICAL,rejected,SCRIPT_FAIL,0.809091,0.004214,0.251956,0.196574,1.0,0.0,gend-clip-l14,preliminary-val-2026-10-12-fc6b2ad4
+23,LayerNorm-tuned M3,PQ,accepted,,0.81947,0.008612,0.191683,0.326916,0.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned
+24,LayerNorm-tuned M3,PQ,rejected,MORPH_FLAG,0.543231,0.005532,0.87261,0.011293,1.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned
+25,LayerNorm-tuned M3,PQ,accepted,,0.8293,8.9e-05,0.163395,0.068469,0.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned
+26,LayerNorm-tuned M3,PQ,accepted,,0.816296,8.3e-05,0.236076,0.033214,0.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned
+27,LayerNorm-tuned M3,PQ,accepted,,0.818149,0.000501,0.150495,0.021296,0.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned
+28,LayerNorm-tuned M3,CLASSICAL,accepted,,0.796184,0.011,0.221797,0.334371,0.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned
+29,LayerNorm-tuned M3,CLASSICAL,accepted,,0.793792,0.021888,0.349978,0.100362,0.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned
+30,LayerNorm-tuned M3,CLASSICAL,accepted,,0.800074,0.004395,0.231489,0.018786,0.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned
+31,LayerNorm-tuned M3,CLASSICAL,accepted,,0.83038,0.000246,0.236909,0.130644,0.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned
+32,LayerNorm-tuned M3,CLASSICAL,accepted,,0.804257,0.004695,0.34481,0.188087,0.0,0.0,gend-clip-l14-ln-tuned,preliminary-val-2026-10-12-fc6b2ad4-m3tuned

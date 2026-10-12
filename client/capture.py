@@ -4,7 +4,7 @@
 
 Options:
     --mode PQ|CLASSICAL       crypto mode (default: crypto.mode in config.yaml)
-    --save DIR                also save the recorded session (video.beav + metadata.json)
+    --save DIR                also save the session (video.beav, metadata.json) and the sealed bundle sent (bundle.bin, challenge.json)
     --from-session DIR        send a previously saved session instead of recording (pre-recorded video attack)
     --camera N                camera index (default: capture.camera_index)
     --no-window               record without a preview window
@@ -241,7 +241,12 @@ def main(argv: list[str] | None = None) -> int:
             save_session(args.save, video, metadata, {"actions": ch["actions"]})
 
     t0 = time.perf_counter()
-    resp, request_id = api.verify(seal_evidence(identity, ch, video, metadata))
+    bundle = seal_evidence(identity, ch, video, metadata)
+    if args.save:  # the exact bytes sent, plus the challenge and transaction (used by the replay demo)
+        Path(args.save).mkdir(parents=True, exist_ok=True)
+        (Path(args.save) / "bundle.bin").write_bytes(bundle.to_bytes())
+        (Path(args.save) / "challenge.json").write_text(json.dumps({"challenge": ch, "tx": tx, "mode": mode.value}, indent=1), encoding="utf-8")
+    resp, request_id = api.verify(bundle)
     print(f"Decision: {resp['decision'].upper()}  (round trip {1000 * (time.perf_counter() - t0):.0f} ms, request {request_id})")
     return 0 if resp["decision"] == "accepted" else 1
 

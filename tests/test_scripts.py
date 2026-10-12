@@ -179,7 +179,7 @@ def test_calibrate_writes_thresholds(tmp_path, results):
     assert calibrate.main(["--config", str(cfg_path)]) == 0
     cfg = yaml.safe_load(cfg_path.read_text())
     assert 0.29 < cfg["thresholds"]["m1_pad"] <= 0.3
-    assert cfg["thresholds"]["m2_morph"] == 0.5  # no scores: unchanged
+    assert cfg["thresholds"]["m2_morph"] == yaml.safe_load(DEFAULT_CONFIG.read_text())["thresholds"]["m2_morph"]  # no scores: unchanged
     assert 0.2 < cfg["thresholds"]["match"] < 0.45
     assert cfg["thresholds"]["version"].startswith("cal-")
     assert cfg["detectors"]["m5_injection"]["virtual_camera_names"]  # rest of the file intact

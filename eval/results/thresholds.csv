@@ -1,0 +1,7 @@
+module,threshold,source,n,target,version
+m1_pad,0.5,pretrained Silent-Face argmax rule (no M1 data yet),0,,preliminary-val-2026-10-12-10537d5e
+m3_deepfake,0.918158,scores_m3_deepfake_ln_tuned.csv[calib],769,BPCER 0.005,preliminary-val-2026-10-12-10537d5e
+m5_injection,0.5,virtual-camera name rule (no classifier yet),0,,preliminary-val-2026-10-12-10537d5e
+m2_morph,0.560838,m2_deploy_thresholds.csv,1020,BPCER 0.005,preliminary-val-2026-10-12-10537d5e
+m4_replay,0.5,fixed (pass/fail),0,,preliminary-val-2026-10-12-10537d5e
+match,0.219182,matcher_scores.csv[val],12750,FMR 0.001,preliminary-val-2026-10-12-10537d5e

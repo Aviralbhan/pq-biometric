@@ -153,17 +153,20 @@ class FacePreprocessor:
         return self.detector.version
 
     def best_face(self, img: np.ndarray) -> Face | None:
-        """Among faces >= min_face_px whose score is within score_margin of the best, the largest.
+        """Among faces whose score is within score_margin of the best, the largest; None if it is < min_face_px.
 
         Neither "largest" nor "most confident" alone is safe on FRLL at YuNet score 0.5: a weak false
         box below the chin can be larger than the face (030: 0.65 vs 0.88), and a small false box next
         to a 3/4 face can be slightly more confident than the face (114: 0.837 vs 0.811).
         """
-        faces = [f for f in self.detector.detect(img) if f.width >= self.min_face_px]
+        faces = self.detector.detect(img)
         if not faces:
             return None
         top = max(f.score for f in faces)
-        return max((f for f in faces if f.score >= top - self.score_margin), key=lambda f: f.box[2] * f.box[3])
+        face = max((f for f in faces if f.score >= top - self.score_margin), key=lambda f: f.box[2] * f.box[3])
+        # Size check on the chosen face only: filtering first would let a weak false box that happens
+        # to be >= min_face_px stand in for a real face that is slightly too small.
+        return face if face.width >= self.min_face_px else None
 
     def crops(self, img: np.ndarray, face: Face) -> FaceCrops:
         return FaceCrops(

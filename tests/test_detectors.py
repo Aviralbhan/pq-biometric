@@ -95,6 +95,15 @@ def test_minifasnet_real_class_and_averaging(tmp_path):
     assert m1.score(Sample(jpegs=[], metadata={}, actions=[])) == 0.0
 
 
+def test_minifasnet_argmax_rule_matches_silent_face():
+    m1 = MiniFASNetPAD.__new__(MiniFASNetPAD)
+    m1.decision_rule = "argmax"
+    assert m1.score_probs(np.array([0.30, 0.45, 0.25])) < 0.5  # real is the top class, though P(real) < 0.5
+    assert m1.score_probs(np.array([0.50, 0.40, 0.10])) > 0.5  # a spoof class is on top
+    m1.decision_rule = "p_real"
+    assert m1.score_probs(np.array([0.30, 0.45, 0.25])) == pytest.approx(0.55)
+
+
 def test_minifasnet_uses_raw_0_255_bgr(tmp_path):
     # Logit for "real" = mean of channel 0 (blue in BGR), unnormalised.
     w = np.zeros((3 * 80 * 80, 3))

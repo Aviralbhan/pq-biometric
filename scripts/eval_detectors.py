@@ -81,6 +81,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"resuming: {len(cached)} cached scores for {detector.version}")
     rows: list[dict] = []
     timings, no_face, n_new = [], 0, 0
+    last_checkpoint = [0]  # by count since the last save, not "multiple of N": a partial batch at the end of a CSV shifts the count
     pending: list[tuple[dict, np.ndarray]] = []
 
     def flush() -> None:
@@ -94,8 +95,9 @@ def main(argv: list[str] | None = None) -> int:
             rows.append(row(it, float(score)))
         n_new += len(pending)
         pending.clear()
-        if n_new % (args.batch * 50) == 0:
+        if n_new - last_checkpoint[0] >= args.batch * 50:
             write_csv(scores_path, rows)  # checkpoint: a killed run resumes from here with --resume
+            last_checkpoint[0] = n_new
             print(f"  {n_new} scored (checkpointed)", flush=True)
 
     def row(it: dict, score: float) -> dict:
@@ -106,6 +108,10 @@ def main(argv: list[str] | None = None) -> int:
     for csv_path in args.csv:
         with open(csv_path, encoding="utf-8") as fh:
             items = list(csv.DictReader(fh))[: args.limit]
+        flush()  # also write a checkpoint at each CSV boundary
+        if n_new:
+            write_csv(scores_path, rows)
+            last_checkpoint[0] = n_new
         for it in items:
             if rel_path(it["path"]) in cached:
                 rows.append(row(it, cached[rel_path(it["path"])]))

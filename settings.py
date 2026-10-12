@@ -13,6 +13,36 @@ ROOT = Path(__file__).resolve().parent
 DEFAULT_CONFIG = ROOT / "config.yaml"
 
 
+def install_offline_guard() -> None:
+    """Refuse every network connection except to this machine (PQBIO_OFFLINE_GUARD=1).
+
+    Used by the demo reliability check to prove nothing is downloaded at runtime.
+    Hugging Face libraries are also told to stay offline.
+    """
+    import ipaddress
+    import socket
+
+    os.environ.setdefault("HF_HUB_OFFLINE", "1")
+    os.environ.setdefault("TRANSFORMERS_OFFLINE", "1")
+    original = socket.socket.connect
+
+    def guarded_connect(sock, address):
+        host = address[0] if isinstance(address, tuple) else address
+        try:
+            local = host == "localhost" or ipaddress.ip_address(host).is_loopback
+        except ValueError:
+            local = False
+        if not local:
+            raise ConnectionRefusedError(f"PQBIO_OFFLINE_GUARD: blocked network connection to {host!r}")
+        return original(sock, address)
+
+    socket.socket.connect = guarded_connect
+
+
+if os.environ.get("PQBIO_OFFLINE_GUARD") == "1":
+    install_offline_guard()
+
+
 def load_config(path: str | os.PathLike[str] | None = None, overrides: dict[str, Any] | None = None) -> dict[str, Any]:
     """Read the YAML config (PQBIO_CONFIG env var, else config.yaml) and deep-merge overrides.
 
