@@ -9,6 +9,9 @@ Click the cards in order: Enrol → Verify me → Photo attack → Replay → Mo
 webcam window on the laptop. Use the PQ / Classical switch before "Verify me" to show both modes.
 **Double-click `stop_demo.bat`** when finished. The page works with Wi-Fi off.
 
+Run **Replay** after **Verify me** without restarting the server in between: challenges live in the server's memory, so after a
+restart the old bundle shows EXPIRED instead of REPLAY (still rejected).
+
 If a card shows an error, press **Retry**; **Reset demo** clears the enrolment and history
 (server keys and models stay loaded) so you can start again from Enrol.
 

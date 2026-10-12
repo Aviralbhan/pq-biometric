@@ -219,24 +219,33 @@ function showVerdict(b) {
     ${reasonLine(rec.reason_code)}${scoreTable(rec.scores, v.thresholds)}${trace(rec, b.request, v.mode)}`;
 }
 
+const img = (path, label) => `<figure class="thumb"><img src="/demo/api/image?path=${encodeURIComponent(path)}" alt="${esc(label)}"><figcaption>${esc(label)}</figcaption></figure>`;
+
 function showReplay(b) {
-  const rows = b.attacks.map((a) => `<tr><td>${esc(a.attack)}</td><td>${badge(a.client_sees)}</td>
+  const frame = `<figure class="thumb wide"><img src="/demo/api/evidence_frame?t=${Date.now()}" alt="captured evidence">
+    <figcaption>The captured evidence all three attacks re-use: a frame from your last accepted verification</figcaption></figure>`;
+  const rows = b.attacks.map((a) => `<tr><td>${esc(a.attack)}</td><td class="small">${esc(a.changed || "")}</td><td>${badge(a.client_sees)}</td>
     <td><code>${esc(a.server_reason)}</code><br><span class="muted small">${esc(REASONS[a.server_reason] || "")}</span></td></tr>`).join("");
-  return `<table><tr><th>attack</th><th>client sees</th><th>server's reason (never sent to the client)</th></tr>${rows}</table>`;
+  const note = b.attacks[0] && b.attacks[0].server_reason === "EXPIRED"
+    ? `<p class="note">The first attack shows EXPIRED, not REPLAY: the server was restarted after that capture, so it no longer remembers
+       that challenge (challenges live in memory). It is still rejected. Run "Verify me" again, then this card, to see REPLAY.</p>` : "";
+  return `${frame}<table><tr><th>attack</th><th>what the attacker changed</th><th>client sees</th><th>server's reason (never sent to the client)</th></tr>${rows}</table>${note}`;
 }
 
 function showMorph(b) {
-  const rows = b.pairs.map((p) => `<tr><td>${esc(p.pair)}</td><td class="num">${num(p.score, 4)}</td>
+  const rows = b.pairs.map((p) => `<tr><td>${esc(p.pair)}<div class="thumbs">${img(p.reference, "enrolled photo")}${img(p.probe, "live photo")}</div></td>
+    <td class="num">${num(p.score, 4)}</td>
     <td>${p.score === null ? "no face" : badge(p.rejected ? "rejected" : "accepted")}${p.rejected ? " <code>MORPH_FLAG</code>" : ""}</td></tr>`).join("");
   return `<p class="muted small">${esc(b.model)} · reject if score &gt; ${num(b.threshold, 4)} (BPCER 0.5%)</p>
     <table><tr><th>pair</th><th>score</th><th>decision</th></tr>${rows}</table>`;
 }
 
 function showDeepfake(b) {
-  const rows = b.faces.map((f) => `<tr><td>${f.truth === "fake" ? "<b>fake</b>" : "real"}</td><td class="num">${num(f.p_fake, 4)}</td>
-    <td>${badge(f.rejected ? "rejected" : "accepted")}${f.rejected ? " <code>DEEPFAKE_FAIL</code>" : ""}</td><td class="muted small">${esc(f.file)}</td></tr>`).join("");
+  const rows = b.faces.map((f) => `<tr><td>${img(f.path, f.truth === "fake" ? "fake" : "real")}</td><td>${f.truth === "fake" ? "<b>fake</b>" : "real"}</td>
+    <td class="num">${num(f.p_fake, 4)}</td>
+    <td>${badge(f.rejected ? "rejected" : "accepted")}${f.rejected ? " <code>DEEPFAKE_FAIL</code>" : ""}</td></tr>`).join("");
   return `<p class="muted small">${esc(b.model)} on ${esc(b.dataset)} · reject if P(fake) &gt; ${num(b.threshold, 4)}</p>
-    <table><tr><th>truth</th><th>P(fake)</th><th>decision</th><th>file</th></tr>${rows}</table>`;
+    <table><tr><th>face</th><th>truth</th><th>P(fake)</th><th>decision</th></tr>${rows}</table>`;
 }
 
 function showTamper(b) {

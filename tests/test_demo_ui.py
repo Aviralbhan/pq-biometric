@@ -63,3 +63,8 @@ def test_steps_fail_friendly(demo_client):
 def test_crypto_step_pending_or_table(demo_client):
     r = demo_client.post("/demo/api/run/crypto", json={"mode": "PQ"}).json()
     assert r["ok"] is True and (r["pending"] is True or len(r["ops"]) == 7)
+
+
+def test_image_endpoint_serves_only_dataset_images(demo_client):
+    for path in ("config.yaml", "data/frll/../../config.yaml", "var/demo/keys/storage.key", "data/frll/missing.jpg"):
+        assert demo_client.get("/demo/api/image", params={"path": path}).status_code == 404, path

@@ -145,23 +145,30 @@ def replay_data() -> list[dict]:
     video, meta = load_session(LAST)
     out = []
 
-    resp, rid = api.verify_bytes((LAST / "bundle.bin").read_bytes())
-    out.append({"attack": "Re-submit the captured genuine bundle unchanged (an eavesdropper's replay)", "client_sees": resp["decision"], "request_id": rid})
+    original = (LAST / "bundle.bin").read_bytes()
+    resp, rid = api.verify_bytes(original)
+    out.append({"attack": "Re-submit the captured genuine bundle unchanged (an eavesdropper's replay)", "client_sees": resp["decision"], "request_id": rid,
+                "changed": f"nothing: the same {len(original):,} bytes, sent a second time (challenge {saved['challenge']['challenge_id'][:8]}...)"})
 
     ch = api.challenge(USER, TX, identity.mode)
     check_challenge(identity, ch, TX)
     bundle = seal_evidence(identity, ch, video, meta)
     payload = bytearray(bundle.payload)
-    payload[len(payload) // 2] ^= 0x01
+    flip_at = len(payload) // 2
+    before = payload[flip_at]
+    payload[flip_at] ^= 0x01
     resp, rid = api.verify(replace(bundle, payload=bytes(payload)))
     out.append({"attack": "Fresh challenge, genuine evidence, one bit flipped in the encrypted payload (tampering in transit)",
-                "client_sees": resp["decision"], "request_id": rid})
+                "client_sees": resp["decision"], "request_id": rid,
+                "changed": f"1 bit at byte {flip_at:,} of the {len(payload):,}-byte encrypted payload (0x{before:02x} -> 0x{payload[flip_at]:02x})"})
 
     ch_other = api.challenge(USER, TX_OTHER, identity.mode)
     manifest = replace(make_manifest(identity, ch_other, video), tx_hash=saved["challenge"]["tx_hash"])
     resp, rid = api.verify(seal_evidence(identity, ch_other, video, meta, manifest=manifest))
     out.append({"attack": "The same evidence re-bound to a different transaction (attacker with the device key moves 50,000 INR)",
-                "client_sees": resp["decision"], "request_id": rid})
+                "client_sees": resp["decision"], "request_id": rid,
+                "changed": f"transaction: {TX['amount']:,} {TX['currency']} to {TX['payee']} -> {TX_OTHER['amount']:,} {TX_OTHER['currency']} to "
+                           f"{TX_OTHER['payee']}; the signed evidence still names the original one"})
     for row in out:
         row["server_reason"] = (request_data(row["request_id"]) or {}).get("reason_code") or "accepted"
     return out
@@ -186,7 +193,8 @@ def morph_data(embed=None) -> dict:
     for label, ref, probe in pairs:
         r, p = embed(str(ref)), embed(str(probe))
         score = None if r is None or p is None else m2.score_pair(r, p)
-        rows.append({"pair": label, "score": score, "rejected": score is not None and score > thr})
+        rows.append({"pair": label, "score": score, "rejected": score is not None and score > thr,
+                     "reference": str(Path(ref).relative_to(ROOT).as_posix()), "probe": str(Path(probe).relative_to(ROOT).as_posix())})
     return {"model": m2.version, "threshold": thr, "pairs": rows}
 
 
@@ -208,7 +216,7 @@ def deepfake_data(m3=None) -> dict:
     picks = rng.sample([r for r in rows if r["label"] == "bona_fide"], 3) + rng.sample([r for r in rows if r["label"] == "attack"], 3)
     probs = m3.p_fake([cv2.resize(cv2.imread(r["path"]), (224, 224)) for r in picks])
     faces = [{"truth": "real" if r["label"] == "bona_fide" else "fake", "p_fake": float(p), "rejected": bool(p > thr),
-              "file": Path(r["path"]).name} for r, p in zip(picks, probs)]
+              "file": Path(r["path"]).name, "path": Path(r["path"]).resolve().relative_to(ROOT).as_posix()} for r, p in zip(picks, probs)]
     return {"model": m3.version, "dataset": split_csv.name, "threshold": thr, "faces": faces}
 
 

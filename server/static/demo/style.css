@@ -77,3 +77,9 @@ h4 { margin: 14px 0 4px; }
 .modetag { display: inline-block; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 12px; vertical-align: middle; }
 .modetag.pq { background: #e3ecff; color: #1d4bb0; border: 1px solid #9db8f0; }
 .modetag.cl { background: #fff1dc; color: #9a5b00; border: 1px solid #f0c98d; }
+.thumbs { display: flex; gap: 10px; margin-top: 6px; }
+.thumb { margin: 0; display: inline-block; text-align: center; }
+.thumb img { width: 96px; height: 96px; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); display: block; }
+.thumb figcaption { font-size: 12px; color: var(--muted); }
+.thumb.wide { display: block; margin-bottom: 8px; text-align: left; }
+.thumb.wide img { width: 220px; height: auto; }

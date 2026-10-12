@@ -16,7 +16,7 @@ from typing import Any
 
 import cv2
 from fastapi import APIRouter, FastAPI
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -37,6 +37,17 @@ FRIENDLY = {
     FileNotFoundError: "Something this step needs is missing.",
     LookupError: "This step needs an earlier step first.",
 }
+
+
+IMAGE_ROOTS = [ROOT / "data" / "frll", ROOT / "data" / "frll_morphs", ROOT / "data" / "openforensics" / "crops"]
+
+
+def _thumbnail(img, max_side: int = 320) -> bytes:
+    h, w = img.shape[:2]
+    scale = min(1.0, max_side / max(h, w))
+    if scale < 1.0:
+        img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+    return cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 85])[1].tobytes()
 
 
 class RunRequest(BaseModel):
@@ -153,6 +164,26 @@ def mount(app: FastAPI, server: Any) -> None:
                 log.exception("demo step %s failed", step)
                 message = next((m for t, m in FRIENDLY.items() if isinstance(exc, t)), "This step failed.")
                 return JSONResponse({"ok": False, "message": f"{message} {exc}".strip()})
+
+    @router.get("/image")
+    def image(path: str) -> Response:
+        """A dataset image used by a card, as a thumbnail. Only files under the dataset folders are served."""
+        target = (ROOT / path).resolve()
+        if target.suffix.lower() not in (".jpg", ".jpeg", ".png") or not any(target.is_relative_to(r.resolve()) for r in IMAGE_ROOTS):
+            return Response(status_code=404)
+        img = cv2.imread(str(target)) if target.exists() else None
+        return Response(_thumbnail(img), media_type="image/jpeg") if img is not None else Response(status_code=404)
+
+    @router.get("/evidence_frame")
+    def evidence_frame() -> Response:
+        """The middle frame of the last accepted capture: the evidence the replay attacks re-use."""
+        from preprocessing.video import decode_jpeg, unpack_jpegs
+
+        video = _demo().LAST / "video.beav"
+        if not video.exists():
+            return Response(status_code=404)
+        jpegs = unpack_jpegs(video.read_bytes())
+        return Response(_thumbnail(decode_jpeg(jpegs[len(jpegs) // 2])), media_type="image/jpeg")
 
     @router.get("/results")
     def results() -> dict:
