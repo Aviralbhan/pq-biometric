@@ -1,8 +1,8 @@
-# Progress review (2026-10-12)
+# Progress review (2026-10-13)
 
 AI-based biometric evidence authentication for post-quantum digital identity systems.
 Numbers below are generated from `eval/results/*.csv` by `scripts/progress_review.py`.
-Live demo: `docs/DEMO.md`. Thresholds in use: `preliminary-val-2026-10-12-fc6b2ad4` (preliminary, calibrated on validation data).
+Live demo: `docs/DEMO.md`. Thresholds in use: `preliminary-val-2026-10-12-10537d5e` (preliminary, calibrated on validation data).
 
 ## Status
 
@@ -44,15 +44,27 @@ Pooled held-out over **1020 bona fide pairs**; morph pairs: amsl 4030, facemorph
 
 **M3 deepfake detection** (GenD CLIP ViT-L/14, OpenForensics):
 
-Zero-shot GenD (thresholds from all of Val; the Test-Dev rows are the headline, independent result):
+Zero-shot GenD, thresholds from all of Val. The Val rows are that calibration set itself (BPCER matches its target by construction); the Test-Dev rows, when present, are the headline independent result:
 
 | split | BPCER target | threshold | BPCER | APCER | EER | AUC | real / fake faces |
 |---|---|---|---|---|---|---|---|
+| test-dev | 0.50% | 0.9754 | 0.37% | 68.06% | 12.61% | 0.9434 | 10468 / 19865 |
+| test-dev | 1.00% | 0.9696 | 0.56% | 60.04% | 12.61% | 0.9434 | 10468 / 19865 |
+| test-dev | 5.00% | 0.9229 | 4.00% | 28.32% | 12.61% | 0.9434 | 10468 / 19865 |
 | val | 0.50% | 0.9754 | 0.48% | 70.01% | 14.10% | 0.9299 | 3951 / 9861 |
 | val | 1.00% | 0.9696 | 0.99% | 61.94% | 14.10% | 0.9299 | 3951 / 9861 |
 | val | 5.00% | 0.9229 | 4.99% | 30.68% | 14.10% | 0.9299 | 3951 / 9861 |
 
-Test-Dev zero-shot vs tuned: _pending (scoring overnight)_.
+Test-Dev, zero-shot vs LayerNorm-tuned (both with thresholds from the same 20% Val calibration split):
+
+| model | thresholds from | BPCER target | BPCER | APCER | EER | AUC |
+|---|---|---|---|---|---|---|
+| zero-shot | Val calib 20% | 0.50% | 0.43% | 65.16% | 12.61% | 0.9434 |
+| zero-shot | Val calib 20% | 1.00% | 0.90% | 53.42% | 12.61% | 0.9434 |
+| zero-shot | Val calib 20% | 5.00% | 5.26% | 24.20% | 12.61% | 0.9434 |
+| LayerNorm-tuned | Val calib 20% | 0.50% | 0.21% | 11.55% | 1.75% | 0.9978 |
+| LayerNorm-tuned | Val calib 20% | 1.00% | 1.39% | 2.37% | 1.75% | 0.9978 |
+| LayerNorm-tuned | Val calib 20% | 5.00% | 5.06% | 0.52% | 1.75% | 0.9978 |
 
 LayerNorm-only tuning on 80% of Val, measured on the 20% calibration split: epoch 0: AUC 0.9354, EER 13.15%; epoch 1: AUC 0.9885, EER 4.18%; epoch 2: AUC 0.9965, EER 1.56%.
 
@@ -62,7 +74,24 @@ _pending: the 1,000-run suite with real models is S9 (the earlier stub run was d
 
 **Crypto cost** (sizes and median times per operation):
 
-_pending: benchmark runs overnight on the idle machine._
+|  | X25519 / Ed25519 | ML-KEM-768 / ML-DSA-65 |
+|---|---|---|
+| KEM public key (B) | 32 | 1184 |
+| KEM ciphertext (B) | 32 | 1088 |
+| signature (B) | 64 | 3309 |
+| extra per request (B) | - | 4301 |
+
+| operation (median of 1000 runs) | classical (us) | PQ (us) |
+|---|---|---|
+| encapsulate | 48.1 | 38.8 |
+| decapsulate | 22.9 | 40.2 |
+| sign_manifest | 22.9 | 473.1 |
+| verify_manifest | 63.6 | 111.1 |
+| sign_verdict | 33.0 | 468.35 |
+| seal_bundle | 1536.4 | 1526.8 |
+| unseal_bundle | 1076.3 | 1090.0 |
+
+Machine: Windows 11, cryptography 50.0.2, payload 2048 KB.
 
 **ONNX export parity** (the server runs these files):
 
