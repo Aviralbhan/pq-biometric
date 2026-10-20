@@ -247,6 +247,7 @@ const clS = sumOf('CLASSICAL'), pqS = sumOf('PQ');
 const perfDone = !!(clS && pqS);
 const replayDone = !!replay;
 const matrixDone = !!matrix;
+const pick2 = (mode, attack, k) => { const r = matrix && matrix.find((x) => x.mode === mode && x.attack === attack); return r ? num(r[k]) : NaN; };
 const replayAttacks = replayDone ? replay.filter((r) => r.case !== 'genuine') : [];
 const replayGenuine = replayDone ? replay.filter((r) => r.case === 'genuine') : [];
 const replayAllCorrect = replayDone && replayAttacks.every((r) => num(r.correct_code_rate) === 1);
@@ -664,12 +665,21 @@ if (matrixDone) {
   const srcs = [...new Set(bio.map((r) => r.attack))].filter((a) => pick('CLASSICAL', a) && pick('PQ', a));
   const keys = ['rejection_rate', 'flag_rate[m1_pad]', 'flag_rate[m2_morph]', 'flag_rate[m3_deepfake]', 'flag_rate[m4_replay]', 'no_match_rate'];
   const same = srcs.filter((a) => keys.every((k) => pick('CLASSICAL', a)[k] === pick('PQ', a)[k])).length;
+  const detKeys = keys.filter((k) => k !== 'rejection_rate' && k !== 'flag_rate[m4_replay]');
+  const sameDet = srcs.filter((a) => detKeys.every((k) => pick('CLASSICAL', a)[k] === pick('PQ', a)[k])).length;
+  const differ = srcs.filter((a) => pick('CLASSICAL', a).rejection_rate !== pick('PQ', a).rejection_rate);
+  const diffNote = differ.length
+    ? ` For ${differ.map((a) => `${(srcName[a] || a).toLowerCase()} the overall rejection differs (${pct(pick('CLASSICAL', a).rejection_rate, 1)} classical, ${pct(pick('PQ', a).rejection_rate, 1)} PQ)`).join('; ')}: every challenge draws its two actions at random, so whether a re-sent recording happens to match them varies from run to run; this is not an effect of the cryptography.`
+    : '';
+  const notEnrolled = bio.filter((r) => r.mode === 'PQ' && num(r.n_enrolled) < num(r.n))
+    .map((r) => `${num(r.n) - num(r.n_enrolled)} of the ${int(r.n)} ${(srcName[r.attack] || r.attack).toLowerCase().replace(/ \(.*\)/, '')}`);
   const say = [];
   const df = pick('PQ', 'deepfake'), real = pick('PQ', 'openforensics_real'), mo = pick('PQ', 'morph_enrolment'), cam = pick('PQ', 'webcam');
   if (df && real) say.push(`M3 flagged ${fl(df, 'm3_deepfake')} of the deepfake faces and ${fl(real, 'm3_deepfake')} of the real faces from the same Test-Dev set`);
   if (mo) say.push(`M2 flagged ${fl(mo, 'm2_morph')} of the morphed enrolments`);
-  if (cam) say.push(`on the recorded webcam sessions M1, M2 and M3 flagged ${fl(cam, 'm1_pad')}, ${fl(cam, 'm2_morph')} and ${fl(cam, 'm3_deepfake')}`);
-  add(P(`${T('matrix')} shows the security side of the trade-off. For ${same} of ${srcs.length} sources every rate is identical in the two modes: the detectors see the same pixels whichever cryptography carried them, so post-quantum cryptography neither helps nor hurts against presentation, morph or deepfake attacks. In PQ mode, ${say.join('; ')}. Two artefacts of the test set-up must be read correctly. Still images are sent as static four-second videos, so they cannot perform the liveness actions and M4 flags all of them, genuine or not; and a saved webcam session is a recording made for an earlier challenge, so M4 rejects it whenever the newly drawn actions differ, which is exactly the pre-recorded-video attack M4 is designed to stop. The per-detector columns therefore measure M1–M3 and the matcher on their own, while the overall rejection includes M4. Replay, tampering and re-targeting are stopped by the binding checks in both modes (Section 4.3.3); what PQ mode adds is that these guarantees, and the confidentiality of the video, also hold against a quantum adversary.`));
+  if (cam) say.push(`on the recorded webcam sessions M1, M2 and M3 flagged ${fl(cam, 'm1_pad')}, ${fl(cam, 'm2_morph')} and ${fl(cam, 'm3_deepfake')}; the M2 flags come from enrolling a frame of the same recording as the reference, the pairing already seen in Section 4.3.2, not from a morph`);
+  add(P(`${T('matrix')} shows the security side of the trade-off. For ${sameDet} of ${srcs.length} sources the M1, M2, M3 and matcher rates are identical in the two modes (for ${same} of ${srcs.length} every rate is): the detectors see the same pixels whichever cryptography carried them, so post-quantum cryptography neither helps nor hurts against presentation, morph or deepfake attacks.${diffNote} In PQ mode, ${say.join('; ')}.${notEnrolled.length ? ` ${notEnrolled.join(', ')} could not be enrolled because no usable face was found in the reference frame; they count as rejected.` : ''}`));
+  add(P(`Two findings qualify the offline results. First, M3 caught fewer fakes through the full server path (${fl(df, 'm3_deepfake')} of these 100) than in the offline Test-Dev evaluation (${pct(1 - num(ln('0.005').apcer_max), 1)} at the same threshold). In this path each face is letterboxed into a 640×480 frame, JPEG-compressed and re-detected and re-cropped by the server, which differs from the offline crops; the offline figure should therefore not be assumed for live input, and calibrating M3 on server-path crops is part of the final calibration. Second, the pretrained M1 flagged ${fl(real, 'm1_pad')} of the real faces and ${fl(df, 'm1_pad')} of the fakes: on in-the-wild photos it behaves as a noisy detector, which supports fine-tuning it on CelebA-Spoof before relying on it. Two artefacts of the test set-up must be read correctly. Still images are sent as static four-second videos, so they cannot perform the liveness actions and M4 flags all of them, genuine or not; and a saved webcam session is a recording made for an earlier challenge, so M4 rejects it whenever the newly drawn actions differ, which is exactly the pre-recorded-video attack M4 is designed to stop. The per-detector columns therefore measure M1–M3 and the matcher on their own, while the overall rejection includes M4. Replay, tampering and re-targeting are stopped by the binding checks in both modes (Section 4.3.3); what PQ mode adds is that these guarantees, and the confidentiality of the video, also hold against a quantum adversary.`));
 } else {
   add(...table('matrix', 'Attack × mode matrix.', ['Mode', 'Attack', 'Result'], [['both', 'all', 'pending']], [2000, 3000, 4026]));
   add(P('The attack × mode matrix had not finished when this report was generated.'));
@@ -726,6 +736,7 @@ add(bullets([
   `**Thresholds are preliminary** (version ${thresholds[0].version}) and were set on validation data; final calibration is planned.`,
   '**Deployment** was tested on Windows with an in-process Redis replacement; the Docker image on Linux and a teammate\'s fresh-clone rebuild remain to be done, as do throughput tests under concurrent load.',
   '**Generalisation**: morph and deepfake results come from one dataset each, the matcher from studio photos, and the live tests from one person; performance on Indian faces and other webcams is untested.',
+  ...(matrixDone ? [`**Server-path calibration**: through the full server path M3 caught ${pct(pick2('PQ', 'deepfake', 'flag_rate[m3_deepfake]'), 0)} of 100 fakes against ${pct(1 - num(ln('0.005').apcer_max), 1)} offline, and the pretrained M1 flagged ${pct(pick2('PQ', 'openforensics_real', 'flag_rate[m1_pad]'), 0)} of real still faces; thresholds must be recalibrated on crops produced by the server itself.`] : []),
   '**Threat model**: a compromised server, side channels, denial of service, enrolment fraud, attackers on rooted devices and high-quality 3D masks are out of scope.',
 ]));
 add(...table('pending', 'Status of each part of the work at the time of this report.',
