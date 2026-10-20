@@ -111,7 +111,7 @@ function renderCards() {
   updateDisabled();
 }
 
-function obsMissing(s) { return s.obs && !(status && status.obs_camera); }
+function obsMissing(s) { return Boolean(s.obs && !(status && status.obs_camera)); }  // a real boolean: toggle(x, undefined) would flip the class
 
 function updateDisabled() {
   for (const s of STEPS) {

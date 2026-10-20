@@ -187,8 +187,40 @@ def fig_perf() -> None:
     plt.close(fig)
 
 
+def compose_ui() -> None:
+    """Combine the demo UI screenshots from capture_ui.py into report figures (skipped if they are missing)."""
+    from PIL import Image
+
+    def load(name: str):
+        p = OUT / name
+        return Image.open(p).convert("RGB") if p.exists() else None
+
+    def side_by_side(names: list[str], out: str, gap: int = 40) -> None:
+        ims = [load(n) for n in names]
+        if not all(ims):
+            return
+        canvas = Image.new("RGB", (sum(i.width for i in ims) + gap * (len(ims) - 1), max(i.height for i in ims)), "white")
+        x = 0
+        for im in ims:
+            canvas.paste(im, (x, 0))
+            x += im.width + gap
+        canvas.save(OUT / out)
+
+    head, status = load("ui_header.png"), load("ui_status.png")
+    if head and status:
+        canvas = Image.new("RGB", (max(head.width, status.width), head.height + status.height + 24), "white")
+        canvas.paste(head, (0, 0))
+        canvas.paste(status, ((canvas.width - status.width) // 2, head.height + 24))
+        canvas.save(OUT / "fig_ui_overview.png")
+    side_by_side(["ui_replay.png", "ui_verdict.png"], "fig_ui_replay_verdict.png")
+    side_by_side(["ui_morph.png", "ui_deepfake.png"], "fig_ui_morph_deepfake.png")
+    res = load("ui_results.png")
+    if res:  # the matcher and M2 tables at the top of the Results tab (legible at page width)
+        res.crop((0, 0, res.width, min(res.height, 985))).save(OUT / "fig_ui_results.png")
+
+
 if __name__ == "__main__":
     OUT.mkdir(parents=True, exist_ok=True)
-    for f in (fig_architecture, fig_pipeline, fig_crypto, fig_m3, fig_perf):
+    for f in (fig_architecture, fig_pipeline, fig_crypto, fig_m3, fig_perf, compose_ui):
         f()
     print("\n".join(sorted(p.name for p in OUT.glob("*.png"))))

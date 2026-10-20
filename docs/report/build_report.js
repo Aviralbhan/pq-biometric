@@ -14,7 +14,7 @@ const {
 const ROOT = path.resolve(__dirname, '..', '..');
 const RES = path.join(ROOT, 'eval', 'results');
 const FIG = path.join(__dirname, 'figures');
-const OUT = path.join(__dirname, 'PQ_Biometric_Course_Report.docx');
+const OUT = process.env.REPORT_OUT || path.join(__dirname, 'PQ_Biometric_Course_Report.docx');
 const PAGE_W = 9026; // A4 width minus two 1-inch margins, in DXA
 
 // ---------------------------------------------------------------- data
@@ -193,11 +193,11 @@ const numbered = (items) => {
 let eqNo = 0;
 const Eq = (t) => { eqNo++; return new Paragraph({ alignment: AlignmentType.CENTER, keepLines: true, spacing: { before: 60, after: 120 }, children: [...runs(t, { italics: true }), new TextRun({ text: `     (${eqNo})` })] }); };
 
-const TABLES = ['related', 'threats', 'checks', 'modules', 'stack', 'params', 'datasets', 'metrics', 'crypto_ops', 'sizes',
+const TABLES = ['related', 'threats', 'checks', 'modules', 'stack', 'params', 'datasets', 'metrics', 'targets', 'crypto_ops', 'sizes',
   'perf_summary', 'perf_stages', 'replay', 'matcher', 'm2', 'm3', 'm3_tuning', 'onnx', 'matrix', 'genuine', 'pending', 'codes'];
-const FIGS = ['arch', 'pipeline', 'crypto', 'perf', 'm3'];
+const FIGS = ['arch', 'pipeline', 'ui_overview', 'crypto', 'perf', 'm3', 'ui_attacks', 'ui_detect', 'ui_results'];
 const T = (k) => { const i = TABLES.indexOf(k); if (i < 0) throw new Error(k); return `Table ${i + 1}`; };
-const F = (k) => { const i = FIGS.indexOf(k); if (i < 0) throw new Error(k); return `Fig. ${i + 1}`; };
+const F = (k) => { const i = FIGS.indexOf(k); if (i < 0) throw new Error(k); return `Figure ${i + 1}`; };
 let tablesMade = 0, figsMade = 0;
 
 const border = { style: BorderStyle.SINGLE, size: 4, color: '808080' };
@@ -267,7 +267,7 @@ function replaySentence() {
 
 // ================================================================ TITLE
 add(
-  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 600, after: 240 }, children: [new TextRun({ text: 'AI-Based Biometric Evidence Authentication for Post-Quantum Digital Identity Systems', bold: true, size: 34 })] }),
+  new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 600, after: 240 }, children: [new TextRun({ text: 'AI-Based Biometric Evidence Authentication for Post-Quantum Digital Identity Systems', bold: true, size: 30 })] }),
   new Paragraph({ alignment: AlignmentType.CENTER, spacing: { after: 360 }, children: [new TextRun({ text: 'Course Project Report', size: 26 })] }),
 );
 const authorRows = [
@@ -324,7 +324,7 @@ add(P('At the same time the cryptography that protects this evidence is reaching
 add(P('Industry is starting to combine the two worlds. Daon describes a patented "Quantum Identity" architecture that binds biometric evidence to individual transactions {daon,burt}, and authID signs biometric transactions with ML-DSA-65 {authid}. Academic work protects face templates with lattice-based or code-based encryption {roman,arjona,olushola}. Post-quantum cryptography, however, works like a tamper-proof envelope: it proves that nobody opened or swapped the envelope, even after quantum computers exist, but it says nothing about whether the photo inside is a printout, a morph or a deepfake. A secure identity system needs both properties at once, and it needs a record of why each decision was made.'));
 add(H2('1.1 Problem statement and why post-quantum security'));
 add(P('The problem addressed is: *how can a remote face-verification system accept only genuine, live, fresh evidence for one specific transaction, keep that evidence confidential and unforgeable against an adversary with a future quantum computer, and leave an auditable, tamper-evident record of the AI decision, at a cost that users will not notice?* Post-quantum cryptography is needed because biometric evidence has a long shelf life: a face video captured today identifies the same person for decades, so it must stay secret beyond the expected arrival of cryptographically relevant quantum computers. Quantum computing is not used to run the system; the project uses quantum-resistant algorithms on ordinary hardware, which is how post-quantum security is deployed in practice.'));
-add(H2('1.2 Goals'));
+add(H2('1.2 Goals of the Project'));
 add(bullets([
   'Protect the evidence in transit with ML-KEM-768 and ML-DSA-65, and bind it to one transaction and one challenge so that it cannot be replayed or reused for another payment.',
   'Detect five attack classes (presentation, morphing, deepfake, replay, injection) with open models on openly downloadable datasets, reported per attack type at three fixed operating points.',
@@ -335,12 +335,12 @@ add(bullets([
 add(H2('1.3 Novelty'));
 add(P('Neither post-quantum protection of biometric data nor AI attack detection is new, and this report does not claim either. To our knowledge, in the open literature, existing systems treat the detector\'s verdict as an unsigned internal result. Here the verdict itself becomes post-quantum-signed evidence: the server signs, with ML-DSA-65, one record that binds the challenge, the transaction hash, the video hash, every detector score, the model versions, the threshold version and the decision. Anyone holding the server\'s public key can later prove that a stored decision was not edited and that it belongs to that exact transaction and video.'));
 add(P('The second contribution is empirical: one testbed in which the same detectors run under classical and post-quantum cryptography, so that the report can state, with measurements, what post-quantum cryptography adds (confidentiality against future quantum attackers, at a measured cost in time and bytes) and what it does not (it does not stop a single presentation, morph or deepfake attack, which the AI modules must catch).'));
-add(H2('1.4 Organisation of the report'));
-add(P('Section 2 reviews related work, the theory behind the quantum threat and lattice cryptography, and the gap this project fills. Section 3 formulates the problem and describes the protocol, the six server checks, the five detectors and the implementation. Section 4 gives the experimental setup, the metrics and the results, comparing classical and post-quantum cryptography and discussing sources of error. Section 5 discusses novelty, insights and limitations, and Section 6 concludes. The code link, originality and AI-usage statements, references and an appendix follow.'));
+add(H2('1.4 Organization of the Report'));
+add(P('The remainder of this report is organized as follows: Section 2 reviews related work, the theory behind the quantum threat and lattice cryptography, and the gap this project fills. Section 3 formulates the problem and describes the protocol, the six server checks, the five detectors and the implementation. Section 4 gives the experimental setup, the metrics and the results, comparing classical and post-quantum cryptography and discussing sources of error. Section 5 discusses novelty, insights and limitations, and Section 6 concludes. The code link, originality and AI-usage statements, references and an appendix follow.'));
 
 // ================================================================ 2 BACKGROUND
 add(H1('2. Background and Related Work'));
-add(H2('2.1 Literature review'));
+add(H2('2.1 Literature Review'));
 add(P('**Post-quantum protection of biometric data.** Román *et al.* combined the Kyber and Saber public-key schemes with homomorphic encryption so that face templates can be compared while encrypted {roman}. Arjona *et al.* built a similar scheme on Classic McEliece and showed real-time matching of protected FaceNet embeddings {arjona}. Olushola and Meenakshi fused face, iris and fingerprint features and matched them under CKKS homomorphic encryption with ML-KEM (Kyber-1024) session keys {olushola}. Gowri Ganesh *et al.* sketched, in simulation, a pipeline that places a CNN presentation-attack detector next to ML-KEM {gowri}. These works protect templates and channels; none signs the detector\'s decision, and none measures replay, morphing, deepfake and injection attacks in one system.'));
 add(P('**Industry systems.** Daon\'s five-patent architecture checks whether evidence is real, live and transaction-bound; its U.S. Patent 12,695,590 adds a transaction-specific noise vector to biometric features to resist injection and replay {daon}. A trade report notes that post-quantum identity is moving "beyond cryptography" to the evidence itself {burt}, and authID now offers ML-DSA-65 signatures on biometric transactions {authid}. Veridos argues that biometric records need the earliest post-quantum attention because they cannot be revoked {veridos}. None of these publishes measurements or signs the AI verdict as an auditable record.'));
 add(P('**Attack detection.** Presentation attack detection (PAD) is evaluated with the APCER/BPCER metrics of ISO/IEC 30107-3 {iso30107}; CelebA-Spoof is a large open PAD dataset {celebaspoof}, and the MiniFASNet models of Silent-Face-Anti-Spoofing are light enough for real time {silentface}. Challenge-response liveness, in which the user must react to something unpredictable, appears in Face Flashing (random screen colours) {faceflashing} and GOTCHA (challenges that degrade real-time deepfakes) {gotcha}. Morphing attacks were introduced by Ferrara *et al.* {ferrara}; differential morphing attack detection (D-MAD) compares the enrolled photo with a trusted live capture through deep face embeddings {scherhag}, and FRLL-Morphs provides morphs from several tools {sarkar,frllmorphs}. For deepfakes, OpenForensics offers multi-face forgeries in the wild {openforensics}, and GenD adapts a CLIP vision encoder {clip} by tuning only its LayerNorm parameters {gend}. Virtual-camera injection can be detected from capture metadata and timing {vcd}.'));
@@ -359,7 +359,7 @@ add(...table('related', 'Comparison of the closest related work with this projec
   [2350, 1350, 1450, 1350, 1250, 1276]));
 add(P(`${T('related')} shows that each column has been covered by some earlier work, but no row other than this project covers all of them, and none signs the AI verdict.`));
 
-add(H2('2.2 Theoretical framework'));
+add(H2('2.2 Theoretical Framework'));
 add(P('**The quantum threat.** Shor\'s algorithm finds the period of a modular function with the quantum Fourier transform, which yields the factors of an RSA modulus or the discrete logarithm behind Diffie–Hellman and elliptic-curve keys in polynomial time {shor}. X25519 {rfc7748} and Ed25519 {rfc8032}, used here as the classical baseline, fall to it. Grover\'s algorithm searches an unstructured space of size N in about √N steps {grover}, so a k-bit symmetric key keeps about k/2 bits of security; AES-256 and SHA-384 therefore keep a comfortable margin, and they are used for all symmetric work in this project {fips180,sp80038d}.'));
 add(P('**Learning with errors.** The post-quantum schemes used here rest on the learning-with-errors (LWE) problem {regev}: given a random matrix A and b = A·s + e (mod q), where s is secret and e is a small random error, recover s. The small error makes the linear system hard to solve, and no efficient quantum algorithm is known. Module-LWE replaces integers by polynomials in the ring R_{q} = Z_{q}[X]/(X^{256} + 1) and uses small k×k matrices of such polynomials, which keeps keys small while retaining worst-case hardness guarantees {langlois}:'));
 add(Eq('b = A·s + e,   A ∈ R_{q}^{k×k},   s, e small,   R_{q} = Z_{q}[X]/(X^{256} + 1)'));
@@ -373,7 +373,7 @@ add(Eq('APCER = |{attacks with s ≤ τ}| / |attacks|'));
 add(Eq('BPCER = |{bona fide samples with s > τ}| / |bona fide samples|'));
 add(P('APCER is reported separately for each attack type. The equal error rate (EER) is the point where APCER = BPCER, and the AUC is the probability that a random attack scores above a random bona fide sample. For the matcher, the false match rate (FMR) is the share of impostor pairs whose similarity reaches the threshold and the false non-match rate (FNMR) the share of genuine pairs below it.'));
 
-add(H2('2.3 Gap analysis'));
+add(H2('2.3 Gap Analysis'));
 add(bullets([
   '**Crypto without detection.** Post-quantum biometric schemes protect templates and channels, but a perfectly encrypted deepfake is still a deepfake {roman,arjona,olushola}.',
   '**Detection without protected evidence.** Detector papers assume the frames reach the model unchanged; they do not bind the sample to a transaction or a challenge.',
@@ -384,8 +384,8 @@ add(bullets([
 add(P('This project fills these gaps with a single prototype that binds, encrypts and signs the evidence, runs five detectors, signs the verdict and measures both modes under identical conditions.'));
 
 // ================================================================ 3 METHODOLOGY
-add(H1('3. Proposed Methodology and System Architecture'));
-add(H2('3.1 Problem formulation'));
+add(H1('3. Proposed Methodology & System Architecture'));
+add(H2('3.1 Problem Formulation'));
 add(P('A user U has enrolled a device signing key pk_{dev} and a face template t. For a transaction tx_context, the server issues a challenge C = (id, n, h_{tx}, a_{1}, a_{2}, mode, expiry), where n is a 32-byte nonce, h_{tx} = SHA-384(canonical_json(tx_context)) and a_{1}, a_{2} are two liveness actions. The client returns a sealed bundle B carrying a video v, capture metadata m, a manifest M = (mode, id, n, h_{tx}, SHA-384(v), timestamp) and a signature σ = Sign(sk_{dev}, SHA-384(M)). The server must output accept only if:'));
 add(Eq('Check_{i}(B, C) passes (i = 1…6)  ∧  s_{k}(v, m) ≤ τ_{k} (k = M1…M5)  ∧  cos(e(v), t) ≥ τ_{match}'));
 add(P('and it must sign the record R = (id, mode, h_{tx}, SHA-384(v), scores, model versions, threshold version, decision, reason code, time) as ρ = Sign(sk_{server}, SHA-384(canonical_json(R))). Each threshold τ_{k} is the smallest value whose bona fide rejection on separate calibration data is at most β = 0.5%; with five modules this keeps the combined false rejection near 2.5%. The security goals are freshness (no reuse of a challenge), binding (evidence valid for one transaction only), confidentiality including against harvest-now-decrypt-later, integrity and origin authentication, genuineness of the face, and auditability of the decision. The threat model is summarised in ' + T('threats') + '.'));
@@ -410,7 +410,7 @@ add(...table('threats', 'Threat model: attacks considered and the component that
   [2100, 3700, 3226], { left: true }));
 add(P('Out of scope, and stated as limits: a compromised server, side channels, denial of service, enrolment fraud, a strong attacker on a rooted device and high-quality 3D masks.'));
 
-add(H2('3.2 Algorithm and protocol design'));
+add(H2('3.2 Algorithm Design'));
 add(P(`${F('arch')} shows the four layers. Layer A captures the evidence, Layer B seals it with post-quantum cryptography, Layer C verifies it and Layer D measures everything. Arrows: (1) the server issues a challenge; (2) the client builds the manifest from the video; (3) the sealed bundle is sent to POST /verify; (4) the client receives only "accepted" or "rejected"; (5) stage timings and scores go to the evaluation layer.`));
 add(...figure('arch', 'fig1_architecture.png', 'System architecture: capture client, post-quantum channel, verification server and evaluation harness.', 610));
 add(H3('One transaction, step by step'));
@@ -456,7 +456,7 @@ add(P('**M4 liveness actions.** Per frame, the blink level is b = ½(eyeBlinkLef
 add(P('**M5 injection.** A camera name matching a known virtual camera (OBS Virtual Camera, v4l2loopback, ManyCam and others) scores 1. The planned classifier uses 16 features of the capture: mean, standard deviation, coefficient of variation and 5th/95th percentiles of the inter-frame intervals Δt_{i} = t_{i+1} − t_{i}, the share of intervals within 1 ms of the median, the duplicate-frame ratio, requested versus delivered resolution and frame rate, and the latency of a resolution change. Virtual cameras tend to be too regular, repeat frames and switch resolution instantly.'));
 add(P('**Decision rule.** Reject if any module score exceeds its threshold, reporting the first in the order M5, M3, M1, M2, M4; otherwise accept if and only if the match similarity reaches τ_{match}. **Signed verdict.** The server builds the record R above, signs SHA-384(canonical_json(R)) with ML-DSA-65 in PQ mode (Ed25519 in classical mode) and stores R and the signature in SQLite. Only hashes and scores are stored, never face images, and scripts/verify_verdict.py re-checks any stored verdict with the server\'s public key.'));
 
-add(H2('3.3 Implementation details'));
+add(H2('3.3 Implementation Details'));
 add(P(`The prototype is written in Python with type hints and a pytest suite for every module. ${T('stack')} lists the frameworks and the hardware. No quantum hardware or simulator is used: post-quantum algorithms are designed to run on classical computers, and the "backend" for all cryptography is the OpenSSL-based Python *cryptography* library {pyca}. Neural models are exported to ONNX and served with ONNX Runtime on the CPU {onnxrt}; the GPU was used only to tune M3.`));
 add(...table('stack', 'Software frameworks and hardware.',
   ['Component', 'Choice (version)'],
@@ -473,10 +473,12 @@ add(...table('stack', 'Software frameworks and hardware.',
   ],
   [2300, 6726], { left: true }));
 add(P('The repository separates crypto/ (the CryptoSuite for both modes and the canonical manifest), server/ (challenge store, checks, decision, verdict, parallel pipeline), client/ (enrolment, capture, sealing), preprocessing/, detectors/ (one package per module), eval/ (metrics, harness, performance and attack-matrix scripts) and scripts/ (downloads, training, calibration, replay suite, verdict verification). All thresholds and paths live in config.yaml, and every number in this report is read from a CSV in eval/results/ by the script that builds the report.'));
+add(P(`For demonstrations the server has a front end: one static page (plain HTML, CSS and JavaScript, no external links, so it works offline) served at http://127.0.0.1:8000/ui only in demo mode and only on the loopback address. It calls the same server functions as the command-line demo and changes no check, threshold, model or key. ${F('ui_overview')} shows its header and the system-status panel, which lists every module with its model version and marks any stub, so a demonstration cannot silently run without a real model; the cards used in the demonstration are shown in Section 4.3.7.`));
+add(...figure('ui_overview', 'fig_ui_overview.png', 'Demo front end: header and system status. Every module reports the model version it runs (no stubs), and the preliminary threshold version is shown.', 600));
 
 // ================================================================ 4 EXPERIMENTS
 add(H1('4. Experimental Setup'));
-add(H2('4.1 Setup and parameters'));
+add(H2('4.1 Experimental Setup'));
 add(P(`The template for this report asks for qubits, shots and the optimiser. No quantum circuit is executed in this project, so qubits and shots do not apply; ${T('params')} lists the parameters that play their role here: security levels, protocol constants, thresholds, the optimiser used for tuning and the sizes of every experiment.`));
 add(...table('params', 'Experimental parameters.',
   ['Parameter', 'Value'],
@@ -510,7 +512,7 @@ add(...table('datasets', 'Datasets and how each is used.',
   ],
   [2300, 2800, 3926], { left: true }));
 
-add(H2('4.2 Expected outcomes and performance metrics'));
+add(H2('4.2 Expected Outcomes & Performance Metrics'));
 add(...table('metrics', 'Metrics and the target for each.',
   ['Metric', 'Definition', 'Expected outcome'],
   [
@@ -525,8 +527,27 @@ add(...table('metrics', 'Metrics and the target for each.',
   ],
   [2300, 3700, 3026], { left: true }));
 add(P('Operating points are fixed in advance: every detector is reported at BPCER targets of 0.5%, 1% and 5%, and every threshold is computed on data separate from the data it is reported on. For a target β and n sorted bona fide calibration scores, τ = s_{(n − ⌊βn⌋)}, so at most ⌊βn⌋ bona fide samples score above it.'));
+const yes = (c) => (c ? 'Met' : 'Not met');
+const replayMet = replayDone ? (replayAllCorrect && replayProtocolFR === 0) : null;
+add(P(`${T('targets')} evaluates the results of Section 4.3 against the target outcomes of the project.`));
+add(...table('targets', 'Target project outcomes and what was achieved.',
+  ['Objective', 'Target', 'Achieved', 'Status'],
+  [
+    ['ML-KEM / ML-DSA integration', 'Both modes work; NIST known-answer tests pass', 'Round trips, tamper tests and ACVP vectors pass; genuine user accepted in both modes', 'Met'],
+    ['Binding and freshness', '100% of protocol attacks rejected with the right code; 0 protocol false rejections',
+      replayDone ? `${int(replayAttacks.reduce((a, r) => a + num(r.correct_code), 0))} of ${int(replayAttackRuns)} with the expected code; ${int(replayProtocolFR)} protocol false rejections` : 'Replay suite running', replayDone ? yes(replayMet) : 'Pending'],
+    ['Face matcher', 'FMR 0.1% on unseen subjects', `FMR ${pct(mTest.fmr, 3)}, FNMR ${pct(mTest.fnmr, 1)}`, 'Met'],
+    ['M2 morphing', 'BPCER 0.5%, low APCER for every tool', `BPCER ${pct(m2at('0.005').bpcer)}, APCER ≤ ${pct(m2at('0.005').apcer_max)}`, 'Met'],
+    ['M3 deepfake', 'BPCER 0.5% on an independent set, low APCER', `BPCER ${pct(ln('0.005').bpcer)}, APCER ${pct(ln('0.005').apcer_max, 1)} (${pct(ln('0.01').apcer_max, 1)} at BPCER 1%)`, 'Partly met'],
+    ['M1 presentation attacks', 'Fine-tuned on CelebA-Spoof, reported per attack type', 'Pretrained model in use; dataset not yet downloaded', 'Pending'],
+    ['M5 injection', 'Classifier tested leave-one-tool-out', 'Virtual-camera name rule only', 'Partly met'],
+    ['PQC overhead', 'Measured; small share of the total', perfDone ? `${pct(pqS.crypto_share_p50, 2)} of end-to-end time; +${int(num(size('PQ').per_transaction_asymmetric_B) - num(size('CLASSICAL').per_transaction_asymmetric_B))} B per transaction` : 'Per operation only', perfDone ? 'Met' : 'Partly met'],
+    ['Signed verdict', 'Any edit of a stored verdict detected', `Edited score detected (${F('ui_attacks')}); covered by tests`, 'Met'],
+    ['Reproducibility', 'Public code, scripts, fresh-clone rebuild', 'Public repository; every number generated from CSVs; Docker and fresh-clone rebuild pending', 'Partly met'],
+  ],
+  [2000, 2500, 3326, 1200], { left: true }));
 
-add(H2('4.3 Comparative analysis and discussion'));
+add(H2('4.3 Comparative Analysis & Discussion'));
 add(H3('4.3.1 Classical versus post-quantum cryptography'));
 const cryptoRows = [
   ['Key generation (KEM)', 'kem_keygen'], ['Encapsulate (client)', 'encapsulate'], ['Decapsulate (server)', 'decapsulate'],
@@ -669,7 +690,15 @@ add(...table('genuine', 'All genuine live captures of one team member at the lap
   [3600, 1800, 1100, 2526], { left: true }));
 add(P(`After re-enrolling in the same room, the user was accepted in ${afterAccepted.length} of ${afterReenrol.length} captures across both modes, with face-match scores of ${fx(Math.min(...acceptedMatch), 2)}–${fx(Math.max(...acceptedMatch), 2)} on accepted captures (threshold ${fx(thr('match').threshold, 4)}), a highest deepfake score of ${fx(maxM3After, 2)} and a highest presentation-attack score of ${fx(maxM1After, 3)}. The two rejections were one SCRIPT_FAIL (the actions were not seen clearly in order) and one MORPH_FLAG with a low face match. The earlier phase shows the main practical risk: after the lighting and position changed, the old enrolment no longer matched and M2 flagged every capture. The system failed safe, but this is a usability cost.`));
 
-add(H3('4.3.7 Sources of error'));
+add(H3('4.3.7 Demonstration on the running prototype'));
+add(P(`The screenshots below were taken from the demo front end with the real models loaded (${F('ui_overview')}). They show single, fixed examples and illustrate the behaviour measured above; they are not additional results.`));
+add(...figure('ui_attacks', 'fig_ui_replay_verdict.png', 'Left: replay attacks on a captured genuine bundle, all rejected while the client sees only "rejected" (the first shows EXPIRED rather than REPLAY because the server had been restarted since that capture, as the page explains). Right: the signed verdict re-checked offline (VALID) and a copy with one M3 score edited from 0.030 to 0.990 (INVALID), with every score against its threshold.', 600));
+add(P(`${F('ui_attacks')} shows the two security properties that cryptography provides. The re-sent bundle, the bundle with one flipped bit and the evidence re-bound to a 50,000 INR payment are rejected by checks 1, 3 and 4. The verdict card is the project's novelty in action: the stored verdict of the last accepted transaction verifies under the server's ML-DSA-65 public key, and editing a single score in a copy of the database breaks the signature.`));
+add(...figure('ui_detect', 'fig_ui_morph_deepfake.png', 'Left: M2 on a genuine FRLL pair (accepted) and an AMSL morph of subjects 001 and 002 used as the enrolment photo (rejected, MORPH_FLAG); illustration only, since this pair was in M2\'s training data. Right: M3 on three real and three fake OpenForensics Test-Dev faces (fixed sample) at the deployed threshold.', 600));
+add(P(`${F('ui_detect')} shows the AI side. The morph card shows why D-MAD works: the morphed reference only half-matches the live face, so its score (0.876) is far above the 0.5608 threshold, while the genuine pair scores 0.137. The deepfake card shows the deployed LayerNorm-tuned GenD separating this sample cleanly; ${T('m3')} gives the honest rate on the whole Test-Dev set, where ${pct(ln('0.005').apcer_max, 1)} of fakes still pass at the strictest setting. ${F('ui_results')} shows the Results tab, which displays the result CSVs read-only, so that the numbers shown during a review are the same files this report is generated from.`));
+add(...figure('ui_results', 'fig_ui_results.png', 'Results tab of the demo front end: the matcher and M2 tables, read directly from eval/results/*.csv (top of the page).', 600));
+
+add(H3('4.3.8 Sources of error'));
 add(P('In place of the quantum noise discussed in quantum-computing projects, the following sources of error affect these measurements:'));
 add(bullets([
   '**Timing noise.** Measurements ran on a Windows laptop with turbo boost and background services; p95 values in particular vary between runs. ML-DSA signing time also varies by design because of rejection sampling.',
@@ -682,7 +711,7 @@ add(bullets([
 
 // ================================================================ 5 ANALYSIS
 add(H1('5. Analysis and Discussion'));
-add(H2('5.1 Novelty and insights'));
+add(H2('5.1 Novelty & Insights'));
 add(bullets([
   '**A signed AI verdict.** Each decision is stored as an ML-DSA-65-signed record that binds the challenge, the transaction hash, the video hash, all scores, the model and threshold versions and the decision; editing any stored score makes verification fail, which the demonstration and the test suite show.',
   `**Post-quantum cryptography is cheap here.** ML-KEM-768 is as fast as X25519, and the slowest post-quantum step, ML-DSA-65 signing, takes about ${fx(num(cop('PQ', 'sign_manifest').p50_us) / 1000, 2)} ms at the median${perfDone ? `; end to end, cryptography is ${pct(pqS.crypto_share_p50, 2)} of a PQ transaction` : ''}. The real costs are the extra ${int(num(sPQ.per_transaction_asymmetric_B) - num(sCL.per_transaction_asymmetric_B))} bytes per transaction and, above all, the neural detectors.`,
@@ -719,15 +748,15 @@ add(...table('pending', 'Status of each part of the work at the time of this rep
 add(H1('6. Conclusions'));
 add(P(`This project built a working face-verification prototype in which every piece of evidence is bound to one transaction and one single-use challenge, protected with ML-KEM-768, ML-DSA-65 and AES-256-GCM, checked by six protocol checks and five AI detectors, and closed by a post-quantum-signed verdict that makes the AI decision auditable. The same pipeline runs with classical cryptography, which made it possible to measure the cost of post-quantum security directly.`));
 add(P(`The measurements answer the central question. Post-quantum cryptography is affordable for biometric evidence: its operations take well under a millisecond and add about ${fx((num(sPQ.per_transaction_asymmetric_B) - num(sCL.per_transaction_asymmetric_B)) / 1000, 1)} kB per transaction${perfDone ? `, a ${pct(pqS.crypto_share_p50, 2)} share of the end-to-end time` : ''}. But it only proves where the evidence came from and that it was not changed. The genuineness of the face depends on the detectors: the matcher met its 0.1% false-match target on unseen subjects, the morph detector accepted fewer than 4 in 1,000 morphs at a 0.6% genuine rejection, and a lightweight LayerNorm tuning made the deepfake detector usable at strict settings on an independent test set.`));
-add(P('The remaining work is clear: fine-tune and evaluate M1 on CelebA-Spoof, record OBS sessions and train the M5 classifier, run the final calibration, and package the system in Docker so that a teammate can reproduce every result from a fresh clone. A natural extension is to publish the signed verdicts to an external transparency log, so that an auditor can check not only that a decision was not edited, but also that none was deleted.'));
+add(P(`Measured against the goals in Section 1.2 (${T('targets')}), the protection, binding, signed-verdict, matcher, morph and cost objectives were met, the deepfake and injection objectives were partly met, and M1 fine-tuning is still pending. The remaining work is clear: fine-tune and evaluate M1 on CelebA-Spoof, record OBS sessions and train the M5 classifier, run the final calibration, and package the system in Docker so that a teammate can reproduce every result from a fresh clone. A natural extension is to publish the signed verdicts to an external transparency log, so that an auditor can check not only that a decision was not edited, but also that none was deleted.`));
 
 // ================================================================ CODE, STATEMENTS
 add(H1('Code'));
 add(new Paragraph({ spacing: { after: 120 }, children: [new TextRun('Source code (public): '),
   new ExternalHyperlink({ link: 'https://github.com/Aviralbhan/pq-biometric', children: [new TextRun({ text: 'https://github.com/Aviralbhan/pq-biometric', style: 'Hyperlink', color: '0563C1', underline: {} })] })] }));
-add(P('The repository contains the full prototype, the tests, the evaluation scripts and the CSV files from which every number in this report is generated (docs/report/build_report.js and docs/report/make_figures.py). Datasets and model weights are not redistributed because of their licences; scripts/ downloads them from the original sources listed in ' + T('datasets') + ' (FRLL: figshare 5047666; FRLL-Morphs: Zenodo 4415159; OpenForensics: Zenodo 5528418; CelebA-Spoof: its official repository). Commands for every step are in docs/RUNBOOK.md.'));
+add(P('The repository contains the full prototype, the tests, the evaluation scripts and the CSV files from which every number in this report is generated (docs/report/build_report.js and docs/report/make_figures.py). Datasets and model weights are not redistributed because of their licences; scripts/ downloads them from the original sources listed in ' + T('datasets') + ' (FRLL: https://figshare.com/articles/dataset/Face_Research_Lab_London_Set/5047666; FRLL-Morphs: https://zenodo.org/record/4415159; OpenForensics: https://zenodo.org/records/5528418; CelebA-Spoof: https://github.com/Davidzhangyuanhan/CelebA-Spoof). Commands for every step are in docs/RUNBOOK.md.'));
 add(H1('Originality Statement'));
-add(P('We declare that this report and the accompanying software are our own work, carried out for this course project. The design of the protocol, the signed-verdict record, the evaluation protocol and all experiments were done by the team. Published algorithms, models, datasets and libraries are used under their licences and are cited where they are used; no text from other sources is reproduced without citation. All results come from our own runs and are traceable to CSV files in the repository.'));
+add(P('We, the three authors, agree that this work is original and novel, and that this report and the accompanying software are our own work, carried out for this course project. The design of the protocol, the signed-verdict record, the evaluation protocol and all experiments were done by the team. Published algorithms, models, datasets and libraries are used under their licences and are cited where they are used; no text from other sources is reproduced without citation. All results come from our own runs and are traceable to CSV files in the repository.'));
 add(H1('AI Usage Statement'));
 add(P('An AI coding assistant (Claude, by Anthropic) was used during the project to help write code, tests and documentation, to run and monitor experiments, and to draft this report from the team\'s design and result files. The team specified the design, reviewed the generated code and text, ran and checked the experiments, and verified that every number in the report is produced from the result CSVs by script. The AI tool was not used to generate or alter any result, and all references were checked against their sources. The team takes full responsibility for the content.'));
 
@@ -774,7 +803,7 @@ const doc = new Document({
   title: 'AI-Based Biometric Evidence Authentication for Post-Quantum Digital Identity Systems',
   styles: {
     default: { document: { run: { font: 'Times New Roman', size: 24 }, paragraph: { spacing: { line: 276 } } } },
-    paragraphStyles: [heading('Heading1', 'Heading 1', 30), heading('Heading2', 'Heading 2', 26), heading('Heading3', 'Heading 3', 24, { italics: true })],
+    paragraphStyles: [heading('Heading1', 'Heading 1', 30), heading('Heading2', 'Heading 2', 30), heading('Heading3', 'Heading 3', 24, { italics: true })],
   },
   numbering: { config: numberingConfig },
   sections: [{
